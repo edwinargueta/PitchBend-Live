@@ -20,6 +20,7 @@ FROM ${PYTHON_IMAGE} AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    NUMBA_CACHE_DIR=/tmp/numba-cache \
     VIRTUAL_ENV=/opt/venv \
     PATH=/opt/venv/bin:$PATH
 
@@ -32,7 +33,7 @@ RUN apt-get update \
 RUN groupadd --system --gid 10001 keyshift \
     && useradd --system --uid 10001 --gid 10001 --no-create-home \
        --home-dir /nonexistent --shell /usr/sbin/nologin keyshift \
-    && mkdir -p /data/media /data/db \
+    && mkdir -p /data/media /data/db /data/tmp \
     && chown -R 10001:10001 /data
 
 WORKDIR /app

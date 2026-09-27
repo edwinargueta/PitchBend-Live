@@ -24,6 +24,7 @@ CONFIGMAP: dict[str, str | int] = {
     "MEDIA_TTL_HOURS": 24,
     "RATE_LIMIT_JOBS_PER_HOUR": 10,
     "WORKER_CONCURRENCY": 1,
+    "TMP_DIR": "/data/tmp",
 }
 # ARCHITECTURE.md §6.2, Secret keyshift-secrets. The code defaults to empty strings;
 # the placeholder values below appear only in .env.example / secret.example.yaml.

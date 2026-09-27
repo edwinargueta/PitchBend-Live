@@ -22,7 +22,7 @@ GIT_SHA   ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 # Host-native `make dev` keeps its SQLite DB and media here (git-ignored); the
 # production paths under /data don't exist on a Mac. Valkey comes from the deps container.
 DEV_DATA := $(CURDIR)/.data
-DEV_ENV  := DB_PATH="$(DEV_DATA)/db/keyshift.db" MEDIA_DIR="$(DEV_DATA)/media" REDIS_URL=redis://127.0.0.1:6379/0
+DEV_ENV  := DB_PATH="$(DEV_DATA)/db/keyshift.db" MEDIA_DIR="$(DEV_DATA)/media" TMP_DIR="$(DEV_DATA)/tmp" REDIS_URL=redis://127.0.0.1:6379/0
 
 # Node comes from apps/web/.nvmrc through nvm when nvm is installed (it's a shell
 # function, so each recipe sources it); otherwise the node on PATH, which must be 24+.
@@ -34,7 +34,7 @@ PNPM := COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm
 
 .PHONY: help setup setup-api setup-web dev dev-check dev-deps dev-api dev-worker dev-web \
         dev-stop build up up-d down reset logs ps test test-api test-web lint fmt check \
-        validate manifests images api-shell web-shell api-run web-run check-cluster \
+        validate manifests images test-browser e2e api-shell web-shell api-run web-run check-cluster \
         deploy clean
 
 help:
@@ -54,6 +54,8 @@ help:
 	@echo "  fmt       - auto-format Python (ruff) and web (prettier) code"
 	@echo "  check     - everything CI runs: lint, test and validate"
 	@echo "  validate  - render and validate the K8s manifests, offline (manifests prints them)"
+	@echo "  test-browser - the audio engine on real Web Audio (Chromium, Firefox, WebKit)"
+	@echo "  e2e       - full-stack happy path in Chromium against a running make up-d"
 	@echo "  images    - build the production images locally at :$(IMAGE_TAG) (never pushed)"
 	@echo "Containers:"
 	@echo "  api-shell - a shell in the api container (web-shell for web)"
@@ -87,9 +89,10 @@ dev: dev-check dev-deps
 dev-check:
 	@test -x apps/web/node_modules/.bin/vite || { echo "Web dependencies missing: run 'make setup' first." >&2; exit 1; }
 	@if [ -n "$$($(COMPOSE) ps -q 2>/dev/null)" ]; then echo "The Docker stack (make up) is running and holds :8000/:5173. Run 'make down' first." >&2; exit 1; fi
+	@command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null || { echo "make dev needs ffmpeg and ffprobe on this machine: uploads and YouTube audio go through them (Phase 1). Install them (e.g. brew install ffmpeg) or use make up." >&2; exit 1; }
 
 dev-deps:
-	@mkdir -p "$(DEV_DATA)/db" "$(DEV_DATA)/media"
+	@mkdir -p "$(DEV_DATA)/db" "$(DEV_DATA)/media" "$(DEV_DATA)/tmp"
 	@$(COMPOSE_DEPS) up -d --wait
 
 dev-api:
@@ -166,6 +169,19 @@ images:
 	docker build -f infra/docker/api.Dockerfile --build-arg GIT_SHA=$(GIT_SHA) -t keyshift-api:$(IMAGE_TAG) .
 	docker build -f infra/docker/web.Dockerfile --build-arg GIT_SHA=$(GIT_SHA) -t keyshift-web:$(IMAGE_TAG) .
 
+# Playwright runs in the pinned image (matches @playwright/test 1.63.0); a named volume
+# keeps its Linux node_modules apart from the host's.
+PLAYWRIGHT := docker run --rm --init --shm-size=1g -v "$(CURDIR)":/work -v keyshift-e2e-node-modules:/work/apps/web/node_modules -v keyshift-e2e-pnpm-store:/pnpm-store -e PNPM_CONFIG_STORE_DIR=/pnpm-store -w /work/apps/web -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+PW_IMAGE   := mcr.microsoft.com/playwright:v1.63.0-noble
+
+# The audio engine on real Web Audio in Chromium, Firefox and WebKit (no stack needed).
+test-browser:
+	$(PLAYWRIGHT) $(PW_IMAGE) bash -c "corepack pnpm install --frozen-lockfile >/dev/null && corepack pnpm run test:e2e:engine"
+
+# The full-stack happy path (upload, play, +2, export) against a running `make up-d`.
+e2e:
+	@curl -sf http://localhost:5173/ >/dev/null || { echo "Start the stack first: make up-d" >&2; exit 1; }
+	$(PLAYWRIGHT) --network host -e PW_BROWSERS=none -e E2E_BASE_URL=http://localhost:5173 $(PW_IMAGE) bash -c "corepack pnpm install --frozen-lockfile >/dev/null && corepack pnpm exec playwright test --project=app-chromium"
 # ---- Containers ----------------------------------------------------------------
 
 api-shell:

@@ -1,13 +1,25 @@
-import asyncio
 import importlib
 import inspect
+import logging
+import os
+from pathlib import Path
+from typing import Any
 
+import fakeredis
 import pytest
 from arq.connections import RedisSettings
 from arq.worker import Worker
 
 import keyshift.worker as worker
+from keyshift.audio import key_detection
+from keyshift.db import repository as repo
+from keyshift.db.connection import connect
 from keyshift.settings import get_settings
+from keyshift.worker.context import WorkerDeps, get_deps
+
+
+def dirs_present(root: Path) -> list[Path]:
+    return [p for p in root.iterdir() if p.is_dir()]
 
 
 def test_worker_settings_attributes() -> None:
@@ -15,14 +27,28 @@ def test_worker_settings_attributes() -> None:
     expected_redis = RedisSettings.from_dsn(settings.REDIS_URL)
     ws = worker.WorkerSettings
 
-    assert ws.functions == [worker.noop]
+    assert [f.name for f in ws.functions] == ["fetch_youtube", "ingest_upload"]
+    assert [f.coroutine for f in ws.functions] == [worker.fetch_youtube, worker.ingest_upload]
+    assert all(f.max_tries == 1 for f in ws.functions)
     assert ws.max_jobs == settings.WORKER_CONCURRENCY
     assert ws.health_check_interval == 30
+    assert ws.max_tries == 1
+    assert 0 < ws.job_timeout < repo.STALE_JOB_S
+    assert ws.on_startup is worker.startup
     assert (ws.redis_settings.host, ws.redis_settings.port, ws.redis_settings.database) == (
         expected_redis.host,
         expected_redis.port,
         expected_redis.database,
     )
+
+
+def test_cleanup_cron_runs_hourly_and_at_startup() -> None:
+    (job,) = worker.WorkerSettings.cron_jobs
+    assert job.name == "cleanup"
+    assert job.coroutine is worker.cleanup_module.cleanup
+    assert job.run_at_startup is True
+    assert (job.minute, job.second) == (0, 0)
+    assert job.hour is None  # every hour
 
 
 def test_worker_settings_are_valid_arq_options() -> None:
@@ -51,5 +77,39 @@ def test_worker_settings_come_from_env_without_connecting(
         importlib.reload(worker)
 
 
-def test_noop_task_does_nothing() -> None:
-    assert asyncio.run(worker.noop({})) is None
+@pytest.mark.anyio
+async def test_startup_prepares_storage_and_deps(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    warmed: list[bool] = []
+    monkeypatch.setattr(key_detection, "warm_up", lambda: warmed.append(True))
+    monkeypatch.delenv("DENO_DIR", raising=False)
+    redis = fakeredis.FakeAsyncRedis()
+    ctx: dict[str, Any] = {"redis": redis}
+
+    await worker.startup(ctx)
+
+    settings = get_settings()
+    deps = get_deps(ctx)
+    assert isinstance(deps, WorkerDeps)
+    assert deps.redis is redis and deps.db.path == settings.DB_PATH
+    assert deps.state_ttl_s == settings.MEDIA_TTL_HOURS * 3600
+    for path in (settings.MEDIA_DIR, settings.TMP_DIR, str(Path(settings.DB_PATH).parent)):
+        assert path in {str(p) for p in dirs_present(Path(settings.DB_PATH).parents[1])}
+    tables = {r[0] for r in connect(settings.DB_PATH).execute("SELECT name FROM sqlite_master")}
+    assert {"tracks", "jobs", "schema_migrations"} <= tables
+    assert os.environ["DENO_DIR"] == os.path.join(settings.TMP_DIR, ".cache", "deno")
+    assert warmed == [True]
+
+
+@pytest.mark.anyio
+async def test_warm_up_failure_is_only_a_warning(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def broken() -> None:
+        raise RuntimeError("numba exploded")
+
+    monkeypatch.setattr(key_detection, "warm_up", broken)
+    with caplog.at_level(logging.WARNING):
+        await worker.warm_up_key_detection()
+    assert "warm-up failed" in caplog.text

@@ -1,0 +1,93 @@
+.input-screen {
+  display: grid;
+  gap: 1rem;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-weight: 600;
+}
+
+.url-form__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.text-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 3rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  font-size: 1rem; /* ≥16px so iOS doesn't zoom on focus */
+}
+
+.text-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.text-input[aria-invalid="true"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.url-form__row .btn {
+  min-height: 3rem;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  color: var(--text);
+  transition:
+    border-color 120ms,
+    background-color 120ms;
+}
+
+.dropzone .icon {
+  color: var(--accent);
+}
+
+.dropzone__title {
+  font-weight: 600;
+  font-size: 1.0625rem;
+}
+
+.dropzone__text {
+  color: var(--text-muted);
+}
+
+.dropzone--dragging,
+.dropzone--highlight {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dropzone--highlight {
+  border-style: solid;
+}

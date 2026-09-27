@@ -7,15 +7,23 @@ license = "GPL-3.0-or-later"
 dependencies = [
     "arq>=0.28.0",
     "fastapi>=0.141.1",
+    "librosa>=1.0.0",
+    "numpy>=2.5.3",
     "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
+    "scipy>=1.18.1",
+    "soundfile>=0.14.0",
     "uvicorn[standard]>=0.54.0",
+    "yt-dlp[default,deno]>=2026.8.19",
 ]
 
 [dependency-groups]
 dev = [
+    "fakeredis[lua]>=2.38.0",
     "httpx2>=2.13.1",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.9",
 ]
 
@@ -56,3 +64,17 @@ warn_required_dynamic_aliases = true
 testpaths = ["tests"]
 cache_dir = "/tmp/.pytest_cache"
 addopts = ["-ra", "--strict-markers", "--strict-config"]
+markers = ["slow: long-running performance tests"]
+
+[tool.coverage.run]
+source = ["keyshift"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 1
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.",
+]

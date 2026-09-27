@@ -1,0 +1,96 @@
+{
+  "_comment": "Shared YouTube URL contract (ARCHITECTURE.md §6.4, ADR 0005). Loaded by BOTH apps/api/tests/test_youtube_contract.py and apps/web/src/lib/youtube.contract.test.ts. The two copies must stay byte-identical: infra/scripts/validate-manifests.sh checks it. Edit both, never one.",
+  "cases": [
+    {
+      "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "id": "dQw4w9WgXcQ"
+    },
+    { "input": "http://youtube.com/watch?v=dQw4w9WgXcQ", "id": "dQw4w9WgXcQ" },
+    { "input": "youtube.com/watch?v=dQw4w9WgXcQ", "id": "dQw4w9WgXcQ" },
+    {
+      "input": "  https://m.youtube.com/watch?v=dQw4w9WgXcQ  ",
+      "id": "dQw4w9WgXcQ"
+    },
+    {
+      "input": "HTTPS://WWW.YOUTUBE.COM/watch?v=dQw4w9WgXcQ",
+      "id": "dQw4w9WgXcQ"
+    },
+    {
+      "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890&t=42s",
+      "id": "dQw4w9WgXcQ"
+    },
+    {
+      "input": "https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ",
+      "id": "dQw4w9WgXcQ"
+    },
+    {
+      "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&v=aaaaaaaaaaa",
+      "id": "dQw4w9WgXcQ"
+    },
+    {
+      "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ#t=30",
+      "id": "dQw4w9WgXcQ"
+    },
+    {
+      "input": "https://www.youtube.com/watch?v=a-b_c1234Z9",
+      "id": "a-b_c1234Z9"
+    },
+    {
+      "input": "https://music.youtube.com/watch?v=dQw4w9WgXcQ&si=abc",
+      "id": "dQw4w9WgXcQ"
+    },
+    { "input": "https://youtu.be/dQw4w9WgXcQ", "id": "dQw4w9WgXcQ" },
+    {
+      "input": "https://youtu.be/dQw4w9WgXcQ?si=xyz&t=10",
+      "id": "dQw4w9WgXcQ"
+    },
+    { "input": "youtu.be/dQw4w9WgXcQ", "id": "dQw4w9WgXcQ" },
+    {
+      "input": "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+      "id": "dQw4w9WgXcQ"
+    },
+    { "input": "https://youtube.com/shorts/dQw4w9WgXcQ/", "id": "dQw4w9WgXcQ" },
+    {
+      "input": "https://m.youtube.com/shorts/dQw4w9WgXcQ?feature=share",
+      "id": "dQw4w9WgXcQ"
+    },
+
+    { "input": "", "id": null },
+    { "input": "   ", "id": null },
+    { "input": "dQw4w9WgXcQ", "id": null },
+    {
+      "input": "https://www.youtube.com/playlist?list=PL1234567890",
+      "id": null
+    },
+    { "input": "https://www.youtube.com/watch?list=PL1234567890", "id": null },
+    { "input": "https://www.youtube.com/embed/dQw4w9WgXcQ", "id": null },
+    { "input": "https://www.youtube.com/live/dQw4w9WgXcQ", "id": null },
+    { "input": "https://www.youtube.com/@somechannel", "id": null },
+    { "input": "https://www.youtube.com/channel/UC1234567890", "id": null },
+    {
+      "input": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+      "id": null
+    },
+    { "input": "https://music.youtube.com/shorts/dQw4w9WgXcQ", "id": null },
+    { "input": "https://evil.com/watch?v=dQw4w9WgXcQ", "id": null },
+    { "input": "https://youtube.com.evil.com/watch?v=dQw4w9WgXcQ", "id": null },
+    { "input": "https://youtube.com./watch?v=dQw4w9WgXcQ", "id": null },
+    { "input": "https://www.youtube.com:443/watch?v=dQw4w9WgXcQ", "id": null },
+    { "input": "https://user@www.youtube.com/watch?v=dQw4w9WgXcQ", "id": null },
+    { "input": "//www.youtube.com/watch?v=dQw4w9WgXcQ", "id": null },
+    { "input": "ftp://www.youtube.com/watch?v=dQw4w9WgXcQ", "id": null },
+    {
+      "input": "javascript:alert(1)//youtube.com/watch?v=dQw4w9WgXcQ",
+      "id": null
+    },
+    { "input": "https://www.youtube.com/watch/?v=dQw4w9WgXcQ", "id": null },
+    { "input": "https://www.youtube.com/Watch?v=dQw4w9WgXcQ", "id": null },
+    { "input": "https://youtu.be/dQw4w9WgXcQ/", "id": null },
+    { "input": "https://www.youtube.com/watch?v=dQw4w9WgXc", "id": null },
+    { "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQQ", "id": null },
+    { "input": "https://www.youtube.com/watch?v=dQw4w9WgX!Q", "id": null },
+    { "input": "https://www.youtube.com/watch?v=", "id": null },
+    { "input": "https:/www.youtube.com/watch?v=dQw4w9WgXcQ", "id": null },
+    { "input": "https:\\\\www.youtube.com\\watch?v=dQw4w9WgXcQ", "id": null }
+  ]
+}

@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from keyshift.routes import health
+from keyshift.settings import get_settings
 
 
 def tick(n: int) -> str:
@@ -38,6 +39,7 @@ def sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
 
 def test_health_reports_git_sha(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GIT_SHA", "abc1234")
+    get_settings.cache_clear()  # the client fixture already read the environment
 
     response = client.get("/api/health")
 
@@ -49,6 +51,7 @@ def test_health_version_defaults_to_dev(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("GIT_SHA", raising=False)
+    get_settings.cache_clear()
 
     assert client.get("/api/health").json() == {"status": "ok", "version": "dev"}
 

@@ -52,7 +52,7 @@ spec:
           command:
             - sh
             - -c
-            - mkdir -p /data/media /data/db && chmod 0755 /data/media && chmod 0750 /data/db
+            - mkdir -p /data/media /data/db /data/tmp && chmod 0755 /data/media && chmod 0750 /data/db /data/tmp
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

@@ -22,3 +22,5 @@ data:
   MEDIA_TTL_HOURS: "24"
   RATE_LIMIT_JOBS_PER_HOUR: "10"
   WORKER_CONCURRENCY: "1"
+  # Upload/download staging on the shared PVC; never served by nginx (ADR 0005).
+  TMP_DIR: /data/tmp

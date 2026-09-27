@@ -9,7 +9,7 @@
 ## 1. Working with ARCHITECTURE.md
 
 - **Read first:** read §1–7 in full before any task, because they apply to every phase. Then read **only** your assigned phase's section.
-- **Current phase: Phase 0, Infrastructure (§9).** If nobody assigned you a phase, work in this one. Update this line only after the phase's acceptance criteria pass on the cluster. Phase N must be deployed and working before Phase N+1 starts (§8).
+- **Current phase: Phase 1, MVP (§10).** If nobody assigned you a phase, work in this one. Phase 0 is built and verified locally but not yet deployed; on 2026-09-26 the user chose to start Phase 1 anyway. Phase 1 is done only when its acceptance criteria pass on the cluster, and that includes deploying Phase 0. Normally Phase N must be deployed and working before Phase N+1 starts (§8).
 - **Stay in phase.** Don't build later-phase features, even when it would be convenient. Each phase's *Out of scope* list is binding.
 - **Done means the acceptance criteria pass** (§2). Never loosen a test, threshold, or acceptance criterion to reach that.
 - **Stay in your workstream.** Workstreams run in parallel. In Phase 1 (§10) they are A = `apps/api/`, B = `apps/web/src/audio/`, and C = `apps/web/src/features/`. Shared code (`apps/web/src/lib/` and anything defined in §6) is a coordination point, so flag changes to it instead of making them on your own.
@@ -24,7 +24,7 @@
 | VM size (1 OCPU / 6 GB), per-workload requests and limits | §3.6, ADR 0003 |
 | Shared cluster with the Sudoku Solver (Traefik, cert-manager, issuer) | §3.7, ADR 0003 |
 | Topology diagram and the core principle | §4 |
-| Why a decision was made (D1–D20) | §5 |
+| Why a decision was made (D1–D22) | §5 |
 | Repo layout, env vars, identifiers | §6.1–6.3 |
 | REST API, SSE events, error codes | §6.4–6.6 |
 | SQLite schema; `AudioEngine` interface and music-theory utils | §6.7, §6.8 |

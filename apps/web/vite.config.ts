@@ -1,6 +1,6 @@
-/// <reference types="vitest/config" />
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { configDefaults } from "vitest/config";
 
 // The dev server runs two ways (ADR 0004):
 //  - `make dev`: on the host. The defaults below keep it on localhost and proxy to
@@ -35,5 +35,20 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // e2e/ holds Playwright specs (pnpm test:e2e), not Vitest tests.
+    exclude: [...configDefaults.exclude, "e2e/**"],
+    // `vitest run --coverage` (CI) fails below these. Every module ships with
+    // unit tests; raising a threshold is fine, lowering one needs a reason.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/test/**",
+        "src/**/testing/**",
+        "src/main.tsx",
+      ],
+      thresholds: { statements: 90, branches: 85, functions: 90, lines: 90 },
+    },
   },
 });

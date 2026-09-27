@@ -1,0 +1,38 @@
+# Dependency updates as ordinary PRs (CI must pass before merge).
+#
+# yt-dlp is the reason this exists (ARCHITECTURE.md §14): YouTube changes break old
+# yt-dlp releases within weeks. A weekly PR bumps it, merging produces a new git SHA,
+# CI publishes new images, and `infra/scripts/deploy.sh <sha>` rolls them out.
+# This keeps image tags immutable instead of rebuilding an existing SHA's tag.
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /apps/api
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # yt-dlp and its YouTube helpers ship together.
+      youtube:
+        patterns: ["yt-dlp*", "deno"]
+      python-minor-and-patch:
+        update-types: ["minor", "patch"]
+        exclude-patterns: ["yt-dlp*", "deno"]
+
+  - package-ecosystem: npm # pnpm lockfile
+    directory: /apps/web
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      web-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,139 @@
+.dial-card {
+  display: grid;
+  place-items: center;
+}
+
+.key-dial {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.key-dial__label {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.key-dial__ring {
+  position: relative;
+  width: min(100%, 16rem);
+  aspect-ratio: 1;
+}
+
+.key-dial__dial {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none; /* drags turn the dial instead of scrolling */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.key-dial__dial:active {
+  cursor: grabbing;
+}
+
+.key-dial__dial:focus-visible {
+  outline-offset: 4px;
+}
+
+.key-dial__dial svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.key-dial__track,
+.key-dial__fill {
+  fill: none;
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.key-dial__track {
+  stroke: var(--surface-sunken);
+}
+
+.key-dial__fill {
+  stroke: var(--accent);
+}
+
+.key-dial__tick {
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.key-dial__tick--major {
+  stroke: var(--text);
+  stroke-width: 3;
+}
+
+.key-dial__end {
+  fill: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.key-dial__knob {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 4;
+}
+
+.key-dial__reset {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-content: center;
+  width: 46%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.key-dial__reset:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.key-dial__reset:disabled {
+  cursor: default;
+}
+
+.key-dial__value {
+  font-size: clamp(1.75rem, 9vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.key-dial__reset-text {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.key-dial__reset:disabled .key-dial__reset-text {
+  color: var(--text-muted);
+}
+
+.key-dial__caption {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.key-dial__steppers {
+  display: flex;
+  gap: 1.5rem;
+}

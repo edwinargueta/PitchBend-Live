@@ -1,7 +1,7 @@
 # KeyShift — Architecture & Phased Build Plan
 
 > **Audience:** human developers and AI coding subagents.
-> **Status:** Living document. Phase 0 and Phase 1 are ready to build. Later phases are scoped but may be revised.
+> **Status:** Living document. Phase 0 and Phase 1 are built and verified locally (Compose, Playwright end to end, the production image). Neither is deployed yet. Later phases are scoped but may be revised.
 > **Platform:** Existing single-node k3s cluster on the Oracle VM (1 OCPU / 6 GB), with Traefik already routing traffic. The cluster is shared with the Sudoku Solver app (§3.7).
 > **Hard constraint:** $0/month running cost. Every component is self-hosted on the Oracle Always Free VM or uses a free tier. Each choice lists its tradeoff (see 3.2 and Section 5).
 
@@ -194,6 +194,8 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
 | D18 | Phase 0 implementation choices: repo-root build context with Dockerfile-specific allowlist ignores, `GIT_SHA` build metadata, Node 24 LTS, a temp Kustomize overlay in `deploy.sh`, dual Traefik/ingress-nginx Ingress, and a `media` nginx service in Compose ([ADR 0002](docs/adr/0002-phase-0-implementation-choices.md)) | Fills gaps in §9 without changing any §6 contract | See ADR 0002 (operator must make GHCR packages public and set the pod CIDR) |
 | D19 | Share the 1 OCPU / 6 GB VM with the Sudoku Solver instead of resizing: KeyShift shrinks to 180m / 560Mi of requests, `WORKER_CONCURRENCY=1`, and shares Traefik, cert-manager and `letsencrypt-prod` ([ADR 0003](docs/adr/0003-shared-cluster-with-sudoku-solver.md)) | Uses the existing VM as-is; no resize or reboot; stays $0 | Slower processing on one shared core; Phase 2 export target at risk; Phase 3 Demucs blocked until a (free) resize |
 | D20 | `make dev` runs the API, worker and Vite natively on the host (like the Sudoku repo), with Valkey and the `/media` nginx in Docker; `make up` stays fully containerized; checks always run in containers ([ADR 0004](docs/adr/0004-host-native-make-dev.md), amends ADR 0001) | Fast native reloads and real editor import resolution; Sudoku-repo muscle memory | Two local modes to keep working; host needs uv + Node 24 for `make dev`; `make check` keeps CI parity |
+| D21 | Phase 1 contract clarifications: `NOT_FOUND` 404, `retry_after_s` in the error body, dedup joins in-flight jobs, SSE replay from `job_state`, `TMP_DIR` staging, sharps-only key names from the API ([ADR 0005](docs/adr/0005-phase-1-contract-clarifications.md)) | Settles every cross-boundary gap once, before parallel workstreams build against §6 | One new config key and one new error code |
+| D22 | Phase 1 implementation notes: dedup and replay refinements, MiB upload unit, a shared YouTube URL table, harmonic separation off, `NUMBA_CACHE_DIR`, Signalsmith Blob-URL worklet (CSP note), Dependabot for yt-dlp, host ffmpeg for `make dev`, typed engine errors with cause-specific copy (embedded browsers such as VS Code's lack the AAC decoder; use Chrome, Firefox or Safari) ([ADR 0006](docs/adr/0006-phase-1-implementation-notes.md)) | Records what integration found, so nothing changes silently | Engine memory ~2x the decoded track; Firefox realtime specs skip in CI |
 
 ---
 
@@ -205,7 +207,8 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
 /
 ├─ ARCHITECTURE.md  CLAUDE.md  README.md  LICENSE  .gitignore
 ├─ Makefile               # local entry point: make up, build, test, lint, check (wraps docker compose)
-├─ .github/workflows/      # ci.yml (PR checks in dev images), images.yml (arm64 → GHCR on main)
+├─ .github/workflows/      # ci.yml (checks, coverage gates, engine-browser, e2e), images.yml (arm64 → GHCR on main)
+├─ .github/dependabot.yml  # weekly yt-dlp bumps (ADR 0006)
 ├─ docs/
 │  ├─ adr/
 │  └─ architecture-diagram.md   # Mermaid diagrams of this document
@@ -214,7 +217,8 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
 │  │  ├─ src/audio/        # AudioEngine, worklet, offline render, WAV encoder
 │  │  ├─ src/features/     # input, player, key-dial, export
 │  │  ├─ src/lib/          # api client, sse client, music theory utils
-│  │  └─ public/worklets/  # built worklet + wasm assets
+│  │  ├─ public/worklets/  # unused: Signalsmith inlines its WASM and worklet (ADR 0006)
+│  │  └─ e2e/              # Playwright: engine/ (real Web Audio) and happy-path.spec.ts; fixtures/
 │  └─ api/                 # FastAPI + ARQ worker (one Python package)
 │     ├─ keyshift/
 │     │  ├─ main.py        # FastAPI app
@@ -260,6 +264,7 @@ MAX_UPLOAD_MB=50
 MEDIA_TTL_HOURS=24
 RATE_LIMIT_JOBS_PER_HOUR=10
 WORKER_CONCURRENCY=1          # 1 OCPU VM shared with the Sudoku Solver (ADR 0003)
+TMP_DIR=/data/tmp              # upload/download staging on the shared PVC, never served (ADR 0005)
 
 # Secret
 DUCKDNS_TOKEN=changeme
@@ -343,8 +348,9 @@ data: {"code":"SOURCE_BLOCKED","message":"..."}
 | `LIVESTREAM` | 422 | Live streams not supported |
 | `SOURCE_UNAVAILABLE` | 422 | Private, removed, or region-locked |
 | `SOURCE_BLOCKED` | 502 | YouTube blocked the server; suggest upload |
-| `RATE_LIMITED` | 429 | Too many requests; include `retry_after_s` |
+| `RATE_LIMITED` | 429 | Too many requests. The body includes `"retry_after_s": <int>` inside `error`, plus a `Retry-After` header (ADR 0005) |
 | `KEY_DETECTION_FAILED` | — (SSE only) | Key unknown; playback still works |
+| `NOT_FOUND` | 404 | Unknown, malformed, or expired `track_id` / `job_id` (ADR 0005) |
 | `INTERNAL` | 500 | Unexpected error |
 
 ### 6.7 Database schema (SQLite)
@@ -389,8 +395,10 @@ interface AudioEngine {
   readonly currentTime: number;
   readonly duration: number;
   readonly isPlaying: boolean;
-  renderOffline(opts: { semitones: number; cents: number }): Promise<AudioBuffer>;
+  readonly audioBuffer: AudioBuffer | null; // decoded source for the waveform (ADR 0005)
+  renderOffline(opts: { semitones: number; cents: number; onProgress?: (pct: number) => void }): Promise<AudioBuffer>;
   on(event: 'timeupdate' | 'ended' | 'error', cb: (...a: unknown[]) => void): () => void;
+  dispose(): void;                     // stop and release the AudioContext (ADR 0005)
 }
 ```
 
@@ -508,7 +516,7 @@ Any audio processing, multi-node setup, Helm charts, automated deploys from CI.
 
 **Acceptance (A)**
 - Cache-miss YouTube job reaches `audio_ready` in < 10 s for a typical 4-minute song (when not blocked).
-- Cache-hit returns 200 with `audio_url` in < 200 ms.
+- A cache hit returns `200 {job_id, track_id, status:"done"}` in < 200 ms (§6.4; the client then reads `audio_url` from `GET /api/tracks/{id}`, ADR 0005).
 - Upload of a 5 MB MP3 reaches `audio_ready` in < 5 s.
 - Blocked, too long, livestream, and invalid inputs each return the correct 6.6 code.
 - Key detection passes synthetic fixture tests; runs < 5 s on the VM for 4 minutes of audio.
@@ -620,7 +628,7 @@ Trade-offs, follow-up work, risks.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| YouTube blocks the Oracle datacenter IP | URL input fails | Clear `SOURCE_BLOCKED` UX, upload path, keep yt-dlp updated (rebuild worker image weekly). Avoid using personal account cookies on the server. |
+| YouTube blocks the Oracle datacenter IP | URL input fails | Clear `SOURCE_BLOCKED` UX, upload path, keep yt-dlp updated (weekly Dependabot PR bumps yt-dlp; merging ships a new SHA-tagged image, ADR 0006). Avoid using personal account cookies on the server. |
 | YouTube ToS | Takedown / blocking | Personal-practice framing, 24 h retention, random media names, no public library, upload-first messaging |
 | Oracle reclaims idle instance | Downtime | Uptime checks and real usage; the cluster is rebuildable from `infra/k8s/` |
 | ARM64 native dependency missing | Build failure | Check 3.4 before adopting; ADR for any new native dependency |

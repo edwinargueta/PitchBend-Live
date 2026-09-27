@@ -314,6 +314,17 @@ else
     }' <<<"$containers")"
 fi
 
+echo "==> Shared contract fixtures"
+# The YouTube URL table is run against both the server and browser parsers; each
+# app's test suite loads its own copy (Docker build contexts can't share files).
+url_api="$repo_root/apps/api/tests/fixtures/youtube_urls.json"
+url_web="$repo_root/apps/web/src/lib/fixtures/youtube_urls.json"
+if cmp -s "$url_api" "$url_web"; then
+  pass "YouTube URL contract table is identical in apps/api and apps/web"
+else
+  fail "apps/api/tests/fixtures/youtube_urls.json and apps/web/src/lib/fixtures/youtube_urls.json differ; edit both"
+fi
+
 echo "==> shellcheck infra/scripts/*.sh"
 scripts=()
 while IFS= read -r f; do scripts+=("$f"); done < <(cd "$repo_root" && ls infra/scripts/*.sh)

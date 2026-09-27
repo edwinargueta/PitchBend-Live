@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     MEDIA_TTL_HOURS: int = 24
     RATE_LIMIT_JOBS_PER_HOUR: int = 10
     WORKER_CONCURRENCY: int = 1  # 1 OCPU VM shared with Sudoku (ADR 0003)
+    TMP_DIR: str = "/data/tmp"  # upload/download staging on the shared PVC (ADR 0005 §10)
 
     # Secret keyshift-secrets (§6.2). SecretStr keeps values out of repr() and logs.
     DUCKDNS_TOKEN: SecretStr = SecretStr("")

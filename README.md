@@ -4,7 +4,15 @@ Paste a YouTube link or upload a song, hear it right away, and transpose it up o
 
 It's built to run at **$0/month** on a single Oracle Always-Free Ampere A1 (arm64) VM with single-node Kubernetes.
 
-> **Status: Phase 0 (infrastructure).** The repo contains the skeleton API and web app, container images, Kubernetes manifests, and CI. Audio features arrive in Phase 1. See [`ARCHITECTURE.md`](ARCHITECTURE.md) §8.
+> **Status: Phase 1 (MVP) is built and verified locally, but not yet deployed.** You can paste a YouTube link or upload a file, hear it, transpose it live, see the detected key, and download a WAV. Phase 0's deployment steps under "Production" below still need running on the Oracle VM. See [`ARCHITECTURE.md`](ARCHITECTURE.md) §8.
+
+**What it does today:**
+- **Input:** paste a YouTube link (it auto-submits when valid) or drag and drop an MP3/WAV/M4A/FLAC/OGG file of up to 50 MB and 12 minutes.
+- **Progress:** named stages while the server fetches and analyzes the song. The player appears as soon as the audio is ready, before the key is known.
+- **Live transposition:** a key dial from −12 to +12 semitones, shifted in the browser with no server round trip. Tempo never changes. Keys: ←/→, `0` to reset, Space to play/pause.
+- **Key readout:** the detected key with its confidence and tap-to-switch alternates, plus the live "Now: A major (+2)", a capo hint, and optional tuning correction.
+- **Export:** download the transposed WAV, named after the new key.
+- Songs are deleted after 24 hours.
 
 | Doc | What it's for |
 |---|---|
@@ -62,6 +70,8 @@ Run these from the repo root.
 | Run all linters (ruff, mypy `--strict`, ESLint, Prettier, tsc) | `make lint` |
 | Auto-format code | `make fmt` |
 | Everything CI runs (lint, tests, K8s manifest validation) | `make check` |
+| The audio engine on real Web Audio (Chromium, Firefox, WebKit) | `make test-browser` (in the Playwright image; no stack needed) |
+| The full-stack happy path: upload, play, +2, export | `make up-d`, then `make e2e` |
 | Add a Python dependency | `make api-run CMD="uv add <pkg>"` (updates `pyproject.toml` + `uv.lock`), then `make up` and `make setup` |
 | Add a web dependency | `make web-run CMD="pnpm add <pkg>"` (updates `package.json` + `pnpm-lock.yaml`), then `make up` (rebuilds and refreshes the container's `node_modules`) and `make setup` (refreshes the host deps for `make dev`) |
 | A shell / any command in a container | `make api-shell` · `make web-shell` · `make api-run CMD="…"` · `make web-run CMD="…"` |
@@ -173,6 +183,12 @@ kubectl -n sudoku-prod get pods                              # read-only look: a
 
 Also confirm that rebooting the VM brings everything back with no manual steps. Then confirm that `kubectl delete namespace keyshift` followed by steps 4–5 rebuilds everything. **Deleting the namespace also deletes the Secret and all data.**
 
+**Phase 1 checks after deploying.** These are things only the VM can prove:
+- Upload a song in the browser. Progress stages appear, the player shows before the key does, the dial shifts pitch live, and the WAV downloads.
+- Paste a real YouTube link. It either plays, or shows the "YouTube blocked this request — try uploading the file instead" message, since datacenter IPs are often blocked. The worker logs (`kubectl -n keyshift logs deploy/worker`) show the job's stages.
+- Re-submit the same link or file. It answers at once from the cache.
+- Check real devices once: Chrome, Firefox, Safari, and one phone. The dial change should be audible within about 100 ms, with no clicks.
+
 Uptime Kuma has no Ingress. Reach it with `kubectl -n keyshift port-forward svc/uptime-kuma 3001:3001` and open http://localhost:3001.
 
 ### Ingress controller notes
@@ -189,12 +205,22 @@ Any change to `ingress.yaml` must keep these properties and be re-verified with 
 
 ## CI
 
-- **CI** (`.github/workflows/ci.yml`, on every PR and on `main`) builds the `dev` images on native arm64 runners and runs ruff, mypy `--strict`, pytest, ESLint, Prettier, tsc, and Vitest inside them. It also builds the `prod` images without pushing and validates the rendered manifests.
+- **CI** (`.github/workflows/ci.yml`, on every PR and on `main`) runs these jobs:
+  - **api:** ruff, mypy `--strict`, and pytest with coverage. §10 requires ≥ 80% for `routes/`, `audio/` and `worker/`; they are at 100%. The rate-limit Lua tests run against a Valkey service.
+  - **web:** ESLint, Prettier, tsc, and Vitest, with coverage thresholds.
+  - **engine-browser:** the audio engine on real Web Audio in Chromium, Firefox and WebKit.
+  - **e2e:** the Compose stack plus the Playwright happy path.
+  - **manifests:** Kustomize, kubeconform, the guardrails, and the shared URL table.
+  Every check runs in the same `dev` images you use locally, on native arm64 runners. CI also builds the `prod` images without pushing them.
 - **Images** (`.github/workflows/images.yml`, on `main`) builds the `prod` targets for `linux/arm64` and pushes them to GHCR, tagged with the full and short git SHA. Tags are never `latest`.
+- **Dependabot** opens a weekly PR bumping yt-dlp, because YouTube breaks old versions. Merge it, then deploy the new SHA.
 
 ## Known limitations
 
-- YouTube often blocks datacenter IPs such as Oracle's. When that happens, KeyShift says so and suggests uploading the file instead.
+- YouTube often blocks datacenter IPs such as Oracle's. When that happens, KeyShift says so and suggests uploading the file instead. YouTube ingest is covered by tests with a mocked yt-dlp; the first real fetch happens on the VM.
+- `make dev` needs `ffmpeg` on your machine for uploads (`brew install ffmpeg`), whereas `make up` needs nothing extra.
+- The engine keeps about 2× the decoded song in memory (≈ 170 MB for 4 minutes), which can be tight on old phones.
+- Playback needs a browser that decodes AAC and runs WebAssembly in an AudioWorklet. Embedded browsers such as VS Code's built-in browser (Chromium without proprietary codecs) can't decode AAC, and hardened setups (Chromium `--jitless`, Edge's enhanced security, Safari's Lockdown Mode, some managed-browser policies) turn WebAssembly off. The player then says so and suggests Chrome, Safari or Firefox; its "Technical details" hold the raw error for bug reports.
 - Songs and data are deleted after **24 hours** (a deliberate retention policy).
 - There is one node and no redundancy. The cluster is rebuildable from `infra/k8s/` plus a re-created Secret.
 

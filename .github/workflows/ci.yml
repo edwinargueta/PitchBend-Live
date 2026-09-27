@@ -40,8 +40,13 @@ jobs:
         run: docker run --rm keyshift-api:dev ruff format --check .
       - name: Type-check (mypy --strict)
         run: docker run --rm keyshift-api:dev mypy keyshift
-      - name: Test (pytest)
-        run: docker run --rm keyshift-api:dev pytest -q
+      - name: Test (pytest + coverage gate; real Valkey for the rate-limit Lua script)
+        run: |
+          docker network create ci
+          docker run -d --rm --name valkey --network ci valkey/valkey:9.1.2-trixie
+          # §10 acceptance: >= 80% coverage for routes/, audio/, worker/.
+          docker run --rm --network ci -e KEYSHIFT_TEST_REDIS_URL=redis://valkey:6379/15 keyshift-api:dev \
+            sh -c 'pytest -q --cov=keyshift --cov-report=term-missing && coverage report --include="keyshift/routes/*,keyshift/audio/*,keyshift/worker/*" --fail-under=80'
 
       - name: Build api prod image (no push)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -75,8 +80,8 @@ jobs:
         run: docker run --rm keyshift-web:dev pnpm format:check
       - name: Type-check (tsc)
         run: docker run --rm keyshift-web:dev pnpm typecheck
-      - name: Test (vitest)
-        run: docker run --rm keyshift-web:dev pnpm test
+      - name: Test (vitest + coverage thresholds from vite.config.ts)
+        run: docker run --rm keyshift-web:dev pnpm exec vitest run --coverage
 
       - name: Build web prod image (no push)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -93,3 +98,54 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Render and validate Kustomize output
         run: infra/scripts/validate-manifests.sh
+
+  # The audio engine on real Web Audio: pitch/tempo/export checks in headless
+  # Chromium, Firefox and WebKit (Firefox's realtime specs skip without an audio device).
+  engine-browser:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Engine specs (Playwright 1.63.0 image)
+        run: |
+          docker run --rm --init --shm-size=1g -v "$PWD":/work -w /work/apps/web \
+            -e CI=1 -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 -e PNPM_CONFIG_STORE_DIR=/tmp/pnpm-store mcr.microsoft.com/playwright:v1.63.0-noble \
+            bash -c "corepack pnpm install --frozen-lockfile && corepack pnpm run test:e2e:engine"
+
+  # §10 C9: the one full-stack happy path (upload → play → +2 → export) against the
+  # real Compose stack, built from the same dev images as the jobs above.
+  e2e:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build api dev image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/api.Dockerfile
+          target: dev
+          load: true
+          tags: keyshift-api:dev
+          cache-from: type=gha,scope=api-dev
+      - name: Build web dev image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/web.Dockerfile
+          target: dev
+          load: true
+          tags: keyshift-web:dev
+          cache-from: type=gha,scope=web-dev
+      - name: Start the stack
+        run: |
+          docker compose -f infra/docker-compose.dev.yml up -d --no-build --wait
+          for _ in $(seq 60); do curl -sf http://localhost:5173/ >/dev/null && break; sleep 2; done
+      - name: Happy path (Playwright, Chromium)
+        run: |
+          docker run --rm --init --shm-size=1g --network host -v "$PWD":/work -w /work/apps/web \
+            -e CI=1 -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 -e PNPM_CONFIG_STORE_DIR=/tmp/pnpm-store -e PW_BROWSERS=none -e E2E_BASE_URL=http://localhost:5173 \
+            mcr.microsoft.com/playwright:v1.63.0-noble \
+            bash -c "corepack pnpm install --frozen-lockfile && corepack pnpm exec playwright test --project=app-chromium"
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose -f infra/docker-compose.dev.yml logs --no-color
