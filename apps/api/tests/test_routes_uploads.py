@@ -9,18 +9,18 @@ import fakeredis
 import pytest
 from fastapi.testclient import TestClient
 
-from keyshift.audio.ffmpeg import FFmpegError, ProbeResult
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.errors import ApiError, ErrorCode
-from keyshift.main import create_app
-from keyshift.routes.uploads import MULTIPART_ALLOWANCE, receive_upload
-from keyshift.services import Services
-from keyshift.settings import Settings
+from pitchbend_live.audio.ffmpeg import FFmpegError, ProbeResult
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.errors import ApiError, ErrorCode
+from pitchbend_live.main import create_app
+from pitchbend_live.routes.uploads import MULTIPART_ALLOWANCE, receive_upload
+from pitchbend_live.services import Services
+from pitchbend_live.settings import Settings
 from tests.conftest import FakeLimiter, FakeProbe, FakeQueue
 
 MP3 = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\x00" * 2000
-BOUNDARY = "----keyshiftboundary"
+BOUNDARY = "----pitchbendliveboundary"
 
 
 def body(

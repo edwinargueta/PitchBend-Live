@@ -1,4 +1,4 @@
-# One entry point, two ways to run KeyShift locally (`make help` lists everything):
+# One entry point, two ways to run PitchBend Live locally (`make help` lists everything):
 #   make dev  - the app on this machine (uvicorn, arq, Vite), like the Sudoku repo.
 #               Run `make setup` once first. Valkey and the /media nginx still run in
 #               small Docker containers, so nothing else needs installing (ADR 0004).
@@ -22,14 +22,14 @@ GIT_SHA   ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 # Host-native `make dev` keeps its SQLite DB and media here (git-ignored); the
 # production paths under /data don't exist on a Mac. Valkey comes from the deps container.
 DEV_DATA := $(CURDIR)/.data
-DEV_ENV  := DB_PATH="$(DEV_DATA)/db/keyshift.db" MEDIA_DIR="$(DEV_DATA)/media" TMP_DIR="$(DEV_DATA)/tmp" REDIS_URL=redis://127.0.0.1:6379/0
+DEV_ENV  := DB_PATH="$(DEV_DATA)/db/pitchbend-live.db" MEDIA_DIR="$(DEV_DATA)/media" TMP_DIR="$(DEV_DATA)/tmp" REDIS_URL=redis://127.0.0.1:6379/0
 
 # Node comes from apps/web/.nvmrc through nvm when nvm is installed (it's a shell
 # function, so each recipe sources it); otherwise the node on PATH, which must be 24+.
 # pnpm is the exact version pinned in package.json, through corepack.
 NODE_SETUP = { nvm_sh="$${NVM_DIR:-$$HOME/.nvm}/nvm.sh"; \
 	if [ -s "$$nvm_sh" ]; then . "$$nvm_sh" && nvm use --silent || { echo "Node 24 isn't installed: run 'nvm install 24'" >&2; exit 1; }; fi; \
-	node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 24 ? 0 : 1)' || { echo "KeyShift needs Node 24+ (found $$(node -v))" >&2; exit 1; }; }
+	node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 24 ? 0 : 1)' || { echo "PitchBend Live needs Node 24+ (found $$(node -v))" >&2; exit 1; }; }
 PNPM := COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm
 
 .PHONY: help setup setup-api setup-web dev dev-check dev-deps dev-api dev-worker dev-web \
@@ -80,7 +80,7 @@ setup-web:
 # Ctrl-C stops everything: the trap stops the processes and the two containers.
 # The Sudoku repo's `make dev` pattern, plus the worker and the deps.
 dev: dev-check dev-deps
-	@echo "KeyShift on http://localhost:5173 (API: http://localhost:8000/api/health). Ctrl-C stops everything."
+	@echo "PitchBend Live on http://localhost:5173 (API: http://localhost:8000/api/health). Ctrl-C stops everything."
 	@trap 'trap - INT TERM EXIT; $(COMPOSE_DEPS) stop >/dev/null 2>&1; kill 0' INT TERM EXIT; \
 		$(MAKE) --no-print-directory dev-api & \
 		$(MAKE) --no-print-directory dev-worker & \
@@ -96,10 +96,10 @@ dev-deps:
 	@$(COMPOSE_DEPS) up -d --wait
 
 dev-api:
-	cd apps/api && $(DEV_ENV) uv run --frozen uvicorn keyshift.main:app --host 127.0.0.1 --port 8000 --reload
+	cd apps/api && $(DEV_ENV) uv run --frozen uvicorn pitchbend_live.main:app --host 127.0.0.1 --port 8000 --reload
 
 dev-worker:
-	cd apps/api && $(DEV_ENV) uv run --frozen arq --watch keyshift keyshift.worker.WorkerSettings
+	cd apps/api && $(DEV_ENV) uv run --frozen arq --watch pitchbend_live pitchbend_live.worker.WorkerSettings
 
 dev-web:
 	cd apps/web && $(NODE_SETUP) && $(PNPM) dev
@@ -147,7 +147,7 @@ test-web:
 	$(COMPOSE) run --rm --no-deps web pnpm test
 
 lint:
-	$(COMPOSE) run --rm --no-deps api sh -c 'uv run ruff check . && uv run ruff format --check . && uv run mypy keyshift'
+	$(COMPOSE) run --rm --no-deps api sh -c 'uv run ruff check . && uv run ruff format --check . && uv run mypy pitchbend_live'
 	$(COMPOSE) run --rm --no-deps web sh -c 'pnpm lint && pnpm format:check && pnpm typecheck'
 
 fmt:
@@ -166,12 +166,12 @@ manifests:
 # push. Unlike the Sudoku repo there is deliberately no `publish`: production
 # images come only from CI (ADR 0001).
 images:
-	docker build -f infra/docker/api.Dockerfile --build-arg GIT_SHA=$(GIT_SHA) -t keyshift-api:$(IMAGE_TAG) .
-	docker build -f infra/docker/web.Dockerfile --build-arg GIT_SHA=$(GIT_SHA) -t keyshift-web:$(IMAGE_TAG) .
+	docker build -f infra/docker/api.Dockerfile --build-arg GIT_SHA=$(GIT_SHA) -t pitchbend-live-api:$(IMAGE_TAG) .
+	docker build -f infra/docker/web.Dockerfile --build-arg GIT_SHA=$(GIT_SHA) -t pitchbend-live-web:$(IMAGE_TAG) .
 
 # Playwright runs in the pinned image (matches @playwright/test 1.63.0); a named volume
 # keeps its Linux node_modules apart from the host's.
-PLAYWRIGHT := docker run --rm --init --shm-size=1g -v "$(CURDIR)":/work -v keyshift-e2e-node-modules:/work/apps/web/node_modules -v keyshift-e2e-pnpm-store:/pnpm-store -e PNPM_CONFIG_STORE_DIR=/pnpm-store -w /work/apps/web -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+PLAYWRIGHT := docker run --rm --init --shm-size=1g -v "$(CURDIR)":/work -v pitchbend-live-e2e-node-modules:/work/apps/web/node_modules -v pitchbend-live-e2e-pnpm-store:/pnpm-store -e PNPM_CONFIG_STORE_DIR=/pnpm-store -w /work/apps/web -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 PW_IMAGE   := mcr.microsoft.com/playwright:v1.63.0-noble
 
 # The audio engine on real Web Audio in Chromium, Firefox and WebKit (no stack needed).
@@ -199,7 +199,7 @@ web-run:
 	$(COMPOSE) run --rm --no-deps web $(CMD)
 
 # ---- Production ------------------------------------------------------------------
-# The keyshift namespace is the only environment (CLAUDE.md). check-cluster is
+# The pitchbend-live namespace is the only environment (CLAUDE.md). check-cluster is
 # read-only; deploy.sh prints the kube context and asks before applying anything.
 
 check-cluster:
@@ -215,6 +215,6 @@ deploy:
 clean:
 	$(COMPOSE) down
 	-$(COMPOSE_DEPS) down
-	-docker image rm keyshift-api:dev keyshift-web:dev keyshift-api:$(IMAGE_TAG) keyshift-web:$(IMAGE_TAG) 2>/dev/null
+	-docker image rm pitchbend-live-api:dev pitchbend-live-web:dev pitchbend-live-api:$(IMAGE_TAG) pitchbend-live-web:$(IMAGE_TAG) 2>/dev/null
 	rm -rf apps/api/.venv apps/web/node_modules apps/web/dist apps/web/coverage
 	find apps -name __pycache__ -type d -prune -exec rm -rf {} +

@@ -1,6 +1,6 @@
-"""FastAPI application entrypoint (``uvicorn keyshift.main:app``).
+"""FastAPI application entrypoint (``uvicorn pitchbend_live.main:app``).
 
-The api never imports ``keyshift.worker``, yt-dlp, or librosa: it validates, dedups,
+The api never imports ``pitchbend_live.worker``, yt-dlp, or librosa: it validates, dedups,
 enqueues, and streams events; the worker does the heavy lifting.
 """
 
@@ -10,12 +10,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from keyshift.errors import install_error_handlers
-from keyshift.logs import configure_logging
-from keyshift.routes import health, jobs, tracks, uploads
-from keyshift.services import Services, build_services
-from keyshift.settings import get_settings
-from keyshift.storage import prepare_storage
+from pitchbend_live.errors import install_error_handlers
+from pitchbend_live.logs import configure_logging
+from pitchbend_live.routes import health, jobs, tracks, uploads
+from pitchbend_live.services import Services, build_services
+from pitchbend_live.settings import get_settings
+from pitchbend_live.storage import prepare_storage
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def create_app(services: Services | None = None) -> FastAPI:
     # Everything the Ingress routes to this service lives under /api (§4), so the
     # interactive docs are served there too.
     app = FastAPI(
-        title="KeyShift API",
+        title="PitchBend Live API",
         docs_url="/api/docs",
         redoc_url=None,
         openapi_url="/api/openapi.json",

@@ -29,13 +29,13 @@ from python_multipart.exceptions import FormParserError
 from python_multipart.multipart import MultipartParser, parse_options_header
 from starlette.requests import ClientDisconnect
 
-from keyshift.audio.ffmpeg import FFmpegError
-from keyshift.audio.sniff import SNIFF_BYTES, sniff_audio
-from keyshift.errors import ApiError, ErrorCode, limit_message
-from keyshift.queue import INGEST_UPLOAD
-from keyshift.routes.common import JobAccepted, ServicesDep, enforce_rate_limit, ingest
-from keyshift.storage import remove_path, staged_upload_path
-from keyshift.titles import sanitize_title
+from pitchbend_live.audio.ffmpeg import FFmpegError
+from pitchbend_live.audio.sniff import SNIFF_BYTES, sniff_audio
+from pitchbend_live.errors import ApiError, ErrorCode, limit_message
+from pitchbend_live.queue import INGEST_UPLOAD
+from pitchbend_live.routes.common import JobAccepted, ServicesDep, enforce_rate_limit, ingest
+from pitchbend_live.storage import remove_path, staged_upload_path
+from pitchbend_live.titles import sanitize_title
 
 if TYPE_CHECKING:  # defined only for type checkers in python-multipart
     from python_multipart.multipart import MultipartCallbacks

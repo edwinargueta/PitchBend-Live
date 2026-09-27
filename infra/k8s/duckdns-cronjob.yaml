@@ -17,7 +17,7 @@ metadata:
   name: duckdns
   labels:
     app.kubernetes.io/name: duckdns
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   schedule: "*/5 * * * *"
   concurrencyPolicy: Forbid
@@ -33,7 +33,7 @@ spec:
         metadata:
           labels:
             app.kubernetes.io/name: duckdns
-            app.kubernetes.io/part-of: keyshift
+            app.kubernetes.io/part-of: pitchbend-live
         spec:
           restartPolicy: Never
           automountServiceAccountToken: false
@@ -52,12 +52,12 @@ spec:
                 - name: DUCKDNS_SUBDOMAIN
                   valueFrom:
                     configMapKeyRef:
-                      name: keyshift-config
+                      name: pitchbend-live-config
                       key: DUCKDNS_SUBDOMAIN
                 - name: DUCKDNS_TOKEN
                   valueFrom:
                     secretKeyRef:
-                      name: keyshift-secrets
+                      name: pitchbend-live-secrets
                       key: DUCKDNS_TOKEN
               command: ["/bin/sh", "-c"]
               # --ipv4: DuckDNS auto-detects only IPv4 addresses for an empty ip=.

@@ -17,15 +17,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from keyshift.audio import ffmpeg
-from keyshift.db import repository as repo
-from keyshift.errors import ErrorCode, limit_message
-from keyshift.events import EventName, Stage, error_data, progress_data, publish
-from keyshift.storage import job_dir, media_path, media_url, new_media_name, publish_media
-from keyshift.storage import remove_path as _remove_path
-from keyshift.worker.context import WorkerDeps, get_deps
+from pitchbend_live.audio import ffmpeg
+from pitchbend_live.db import repository as repo
+from pitchbend_live.errors import ErrorCode, limit_message
+from pitchbend_live.events import EventName, Stage, error_data, progress_data, publish
+from pitchbend_live.storage import job_dir, media_path, media_url, new_media_name, publish_media
+from pitchbend_live.storage import remove_path as _remove_path
+from pitchbend_live.worker.context import WorkerDeps, get_deps
 
-logger = logging.getLogger("keyshift.worker")
+logger = logging.getLogger("pitchbend_live.worker")
 
 
 class IngestError(Exception):
@@ -186,7 +186,7 @@ async def analyze_key(run: JobRun, path: Path) -> None:
     db = run.deps.db
     try:
         # Imported lazily: librosa is heavy and the api process must never load it.
-        from keyshift.audio import key_detection
+        from pitchbend_live.audio import key_detection
 
         result = await asyncio.to_thread(key_detection.detect_key, path)
         key = cast(dict[str, Any], result.to_dict())

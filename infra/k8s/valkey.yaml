@@ -9,7 +9,7 @@ metadata:
   name: valkey
   labels:
     app.kubernetes.io/name: valkey
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   replicas: 1
   # No persistence to hand over; Recreate avoids two queues existing briefly.
@@ -23,7 +23,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: valkey
-        app.kubernetes.io/part-of: keyshift
+        app.kubernetes.io/part-of: pitchbend-live
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
@@ -91,7 +91,7 @@ metadata:
   name: valkey
   labels:
     app.kubernetes.io/name: valkey
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   type: ClusterIP
   selector:

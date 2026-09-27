@@ -9,9 +9,9 @@ from typing import Any
 
 import fakeredis
 
-from keyshift import events
-from keyshift.audio import ffmpeg
-from keyshift.audio.key_detection import KeyCandidate, KeyResult
+from pitchbend_live import events
+from pitchbend_live.audio import ffmpeg
+from pitchbend_live.audio.key_detection import KeyCandidate, KeyResult
 
 VIDEO_ID = "dQw4w9WgXcQ"
 

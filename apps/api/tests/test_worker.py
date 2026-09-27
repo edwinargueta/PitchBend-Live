@@ -10,12 +10,12 @@ import pytest
 from arq.connections import RedisSettings
 from arq.worker import Worker
 
-import keyshift.worker as worker
-from keyshift.audio import key_detection
-from keyshift.db import repository as repo
-from keyshift.db.connection import connect
-from keyshift.settings import get_settings
-from keyshift.worker.context import WorkerDeps, get_deps
+import pitchbend_live.worker as worker
+from pitchbend_live.audio import key_detection
+from pitchbend_live.db import repository as repo
+from pitchbend_live.db.connection import connect
+from pitchbend_live.settings import get_settings
+from pitchbend_live.worker.context import WorkerDeps, get_deps
 
 
 def dirs_present(root: Path) -> list[Path]:

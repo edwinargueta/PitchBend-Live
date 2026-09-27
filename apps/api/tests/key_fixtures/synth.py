@@ -3,7 +3,7 @@
 Everything is generated with numpy at 22,050 Hz, mono float32. Notes are harmonic tones
 (6 partials, 1/k amplitudes) with a short attack/release, so chroma looks like a real
 instrument's without any committed audio files. Pitch classes follow
-`keyshift.audio.key_detection.PITCH_CLASSES` (0 = C).
+`pitchbend_live.audio.key_detection.PITCH_CLASSES` (0 = C).
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from collections.abc import Sequence
 import numpy as np
 import numpy.typing as npt
 
-from keyshift.audio.key_detection import PITCH_CLASSES, Mode
+from pitchbend_live.audio.key_detection import PITCH_CLASSES, Mode
 
 SR = 22_050
 Audio = npt.NDArray[np.float32]

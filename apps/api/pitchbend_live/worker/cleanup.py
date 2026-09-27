@@ -14,15 +14,15 @@ import time
 from pathlib import Path
 from typing import Any
 
-from keyshift.clock import now_ts, ts_after
-from keyshift.db import repository as repo
-from keyshift.errors import ErrorCode
-from keyshift.events import error_data, publish
-from keyshift.storage import CACHE_DIR_NAME, media_path, remove_path
-from keyshift.worker.context import WorkerDeps, get_deps
-from keyshift.worker.pipeline import remove_path as remove_path_async
+from pitchbend_live.clock import now_ts, ts_after
+from pitchbend_live.db import repository as repo
+from pitchbend_live.errors import ErrorCode
+from pitchbend_live.events import error_data, publish
+from pitchbend_live.storage import CACHE_DIR_NAME, media_path, remove_path
+from pitchbend_live.worker.context import WorkerDeps, get_deps
+from pitchbend_live.worker.pipeline import remove_path as remove_path_async
 
-logger = logging.getLogger("keyshift.worker")
+logger = logging.getLogger("pitchbend_live.worker")
 
 TMP_MAX_AGE_S = 3600
 # A job moves its file into MEDIA_DIR just before recording it; don't race it.

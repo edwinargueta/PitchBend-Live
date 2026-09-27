@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# infra/scripts/deploy.sh: deploy KeyShift at a given git SHA (ARCHITECTURE.md §9 task 11).
+# infra/scripts/deploy.sh: deploy PitchBend Live at a given git SHA (ARCHITECTURE.md §9 task 11).
 #
-# THIS IS A PRODUCTION DEPLOY. The keyshift namespace on the Oracle VM is the
+# THIS IS A PRODUCTION DEPLOY. The pitchbend-live namespace on the Oracle VM is the
 # only environment; there is no staging (CLAUDE.md §5). Deploys are manual:
 # never run this from CI (no cluster credentials in CI, ever).
 #
@@ -17,20 +17,20 @@
 #      committed kustomization.yaml is never modified. This replaces §9's
 #      `kustomize edit set image`, so no separate kustomize binary is needed.
 #   2. Refuse to continue if the render contains a Secret (it would overwrite
-#      the real keyshift-secrets) or any KeyShift image isn't pinned to the SHA.
+#      the real pitchbend-live-secrets) or any PitchBend Live image isn't pinned to the SHA.
 #   3. Check that both images exist on GHCR, are anonymously pullable (public),
 #      and include linux/arm64.
 #   4. Show the kubectl context and ask for confirmation (unless --yes). Every
 #      later kubectl call is pinned to that context.
-#   5. Create the namespace if it's missing; stop if Secret keyshift-secrets is missing.
+#   5. Create the namespace if it's missing; stop if Secret pitchbend-live-secrets is missing.
 #   6. Apply exactly the render validated in step 2, then wait for each Deployment.
 set -euo pipefail
 
-readonly NAMESPACE=keyshift
-readonly SECRET=keyshift-secrets
+readonly NAMESPACE=pitchbend-live
+readonly SECRET=pitchbend-live-secrets
 readonly REGISTRY=ghcr.io
 readonly OWNER=edwinargueta
-readonly IMAGE_REPOS="keyshift-api keyshift-web"
+readonly IMAGE_REPOS="pitchbend-live-api pitchbend-live-web"
 readonly ROLLOUT_TIMEOUT="${ROLLOUT_TIMEOUT:-600s}"
 readonly MANIFEST_ACCEPT='application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json'
 
@@ -45,7 +45,7 @@ usage() {
 
 # write_overlay DIR BASE_DIR SHA
 # Copies BASE_DIR (infra/k8s) to DIR/base and writes DIR/kustomization.yaml, an
-# overlay of ./base that sets both KeyShift image tags to SHA.
+# overlay of ./base that sets both PitchBend Live image tags to SHA.
 # Why a copy: kustomize rejects absolute paths in `resources:` ("new root
 # cannot be absolute"), and a relative path out of $TMPDIR is fragile (on macOS
 # /var is a symlink to /private/var). A snapshot also means what gets applied
@@ -140,13 +140,13 @@ kc() { kubectl --context "$CONTEXT" "$@"; }
 print_secret_instructions() {
   cat >&2 <<'EOF'
 
-Secret keyshift-secrets is missing. Create it once per cluster, then re-run deploy.sh.
+Secret pitchbend-live-secrets is missing. Create it once per cluster, then re-run deploy.sh.
 Paste these into a bash shell (in zsh, run `bash` first: zsh's `read -p` means
 something else). The values never appear on a command line, in `ps`, or in shell history:
 
   read -rsp 'DUCKDNS_TOKEN: ' DUCKDNS_TOKEN; echo
   read -rsp 'SENTRY_DSN (Enter for none): ' SENTRY_DSN; echo
-  kubectl -n keyshift create secret generic keyshift-secrets \
+  kubectl -n pitchbend-live create secret generic pitchbend-live-secrets \
     --from-file=DUCKDNS_TOKEN=<(printf '%s' "$DUCKDNS_TOKEN") \
     --from-file=SENTRY_DSN=<(printf '%s' "$SENTRY_DSN")
   unset DUCKDNS_TOKEN SENTRY_DSN
@@ -189,7 +189,7 @@ main() {
 
   # --- 1. Temporary overlay + offline render ---------------------------------
   local tmp_base="${TMPDIR:-/tmp}"
-  TMP_DIR=$(mktemp -d "${tmp_base%/}/keyshift-deploy.XXXXXX")
+  TMP_DIR=$(mktemp -d "${tmp_base%/}/pitchbend-live-deploy.XXXXXX")
   trap 'rm -rf -- "$TMP_DIR"' EXIT
   write_overlay "$TMP_DIR" "$k8s_dir" "$sha"
   log "Rendering infra/k8s with image tag $sha (client-side, no cluster access)"
@@ -229,7 +229,7 @@ main() {
   server=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null) || server="?"
   printf '\n  PRODUCTION DEPLOY (there is no staging)\n'
   printf '  context:   %s\n  server:    %s\n  namespace: %s\n  images:    %s\n\n' \
-    "$CONTEXT" "$server" "$NAMESPACE" "$REGISTRY/$OWNER/{keyshift-api,keyshift-web}:$sha"
+    "$CONTEXT" "$server" "$NAMESPACE" "$REGISTRY/$OWNER/{pitchbend-live-api,pitchbend-live-web}:$sha"
   if ((!yes)); then
     [[ -t 0 ]] || die "stdin is not a terminal; re-run with --yes to confirm non-interactively"
     local answer=""
@@ -257,9 +257,9 @@ main() {
   kc apply -f "$TMP_DIR/rendered.yaml"
 
   local deployments d failed=""
-  deployments=$(kc -n "$NAMESPACE" get deployments -l app.kubernetes.io/part-of=keyshift \
+  deployments=$(kc -n "$NAMESPACE" get deployments -l app.kubernetes.io/part-of=pitchbend-live \
     -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
-  [[ -n "$deployments" ]] || die "no KeyShift Deployments found after apply"
+  [[ -n "$deployments" ]] || die "no PitchBend Live Deployments found after apply"
   for d in $deployments; do
     log "Waiting for deployment/$d (timeout $ROLLOUT_TIMEOUT)"
     kc -n "$NAMESPACE" rollout status "deployment/$d" --timeout="$ROLLOUT_TIMEOUT" || failed+=" $d"

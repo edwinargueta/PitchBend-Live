@@ -93,9 +93,9 @@ describe("export filename", () => {
   });
 
   it("falls back for empty titles and caps the length", () => {
-    expect(sanitizeFilename(null)).toBe("KeyShift export");
-    expect(sanitizeFilename("   ")).toBe("KeyShift export");
-    expect(sanitizeFilename("/")).toBe("KeyShift export");
+    expect(sanitizeFilename(null)).toBe("PitchBend Live export");
+    expect(sanitizeFilename("   ")).toBe("PitchBend Live export");
+    expect(sanitizeFilename("/")).toBe("PitchBend Live export");
     expect(Array.from(sanitizeFilename("é".repeat(300)))).toHaveLength(100);
   });
 });

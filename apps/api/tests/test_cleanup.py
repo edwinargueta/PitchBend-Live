@@ -10,15 +10,15 @@ from typing import Any
 import fakeredis
 import pytest
 
-from keyshift import events
-from keyshift.clock import now_ts, ts_after
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.db.connection import connect
-from keyshift.settings import Settings
-from keyshift.worker import cleanup as cleanup_mod
-from keyshift.worker.cleanup import ORPHAN_GRACE_S, TMP_MAX_AGE_S, cleanup
-from keyshift.worker.context import WorkerDeps
+from pitchbend_live import events
+from pitchbend_live.clock import now_ts, ts_after
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.db.connection import connect
+from pitchbend_live.settings import Settings
+from pitchbend_live.worker import cleanup as cleanup_mod
+from pitchbend_live.worker.cleanup import ORPHAN_GRACE_S, TMP_MAX_AGE_S, cleanup
+from pitchbend_live.worker.context import WorkerDeps
 
 pytestmark = pytest.mark.anyio
 

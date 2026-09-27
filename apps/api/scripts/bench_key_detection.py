@@ -2,7 +2,7 @@
 
 Run from apps/api, ideally in the api image limited like the production worker (§3.6):
 
-    docker run --rm --cpus=1 --memory=2g -v "$PWD:/app" -w /app keyshift-api:dev \\
+    docker run --rm --cpus=1 --memory=2g -v "$PWD:/app" -w /app pitchbend_live-api:dev \\
         uv run python scripts/bench_key_detection.py time [--harmonic]
     uv run python scripts/bench_key_detection.py calibrate
 
@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
 
 from key_fixtures import synth
 
-from keyshift.audio import key_detection as kd
+from pitchbend_live.audio import key_detection as kd
 
 
 def encode_m4a(y: synth.Audio, path: Path) -> None:

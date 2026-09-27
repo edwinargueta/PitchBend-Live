@@ -19,17 +19,17 @@
 #     ingress-nginx (§9 task 7).
 #
 # The host below is a placeholder: kustomization.yaml's `replacements:` copies
-# PUBLIC_HOST from the keyshift-config ConfigMap into both host fields. Always
+# PUBLIC_HOST from the pitchbend-live-config ConfigMap into both host fields. Always
 # apply via kustomize (deploy.sh), never this file alone.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: keyshift
+  name: pitchbend-live
   labels:
-    app.kubernetes.io/name: keyshift
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/name: pitchbend-live
+    app.kubernetes.io/part-of: pitchbend-live
   annotations:
-    # cert-manager issues the Let's Encrypt certificate into the keyshift-tls Secret.
+    # cert-manager issues the Let's Encrypt certificate into the pitchbend-live-tls Secret.
     cert-manager.io/cluster-issuer: letsencrypt-prod
     # ingress-nginx only (inactive on Traefik; kept for portability):
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
@@ -43,7 +43,7 @@ spec:
   tls:
     - hosts:
         - public-host.placeholder.invalid
-      secretName: keyshift-tls
+      secretName: pitchbend-live-tls
   rules:
     - host: public-host.placeholder.invalid
       http:

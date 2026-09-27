@@ -5,10 +5,10 @@ from typing import Any
 import pytest
 from arq.connections import ArqRedis
 
-from keyshift.queue import ArqQueue
-from keyshift.ratelimit import TokenBucketLimiter
-from keyshift.services import build_services
-from keyshift.settings import Settings
+from pitchbend_live.queue import ArqQueue
+from pitchbend_live.ratelimit import TokenBucketLimiter
+from pitchbend_live.services import build_services
+from pitchbend_live.settings import Settings
 
 pytestmark = pytest.mark.anyio
 

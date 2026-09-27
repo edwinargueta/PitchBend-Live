@@ -1,4 +1,4 @@
-// Wire types for the KeyShift API: ARCHITECTURE.md §6.4–6.6 and ADR 0005.
+// Wire types for the PitchBend Live API: ARCHITECTURE.md §6.4–6.6 and ADR 0005.
 // This file is the browser's copy of the contract; change it only with §6.
 
 /** Sharps-only canonical names the API uses; display spelling lives in music.ts. */

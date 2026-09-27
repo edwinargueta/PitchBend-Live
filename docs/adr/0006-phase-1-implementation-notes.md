@@ -41,7 +41,7 @@ A few details went beyond or refined ADR 0005, and the integration made some cho
 10. **Logging:** uvicorn's access log drops client IPs and query strings, and health-probe lines are dropped altogether.
 11. **Tests:**
     - `fakeredis[lua]` (with `lupa`, MIT, arm64 wheels) runs the rate-limit Lua script in unit tests.
-    - The script's Valkey-specific tests use a real Valkey through `KEYSHIFT_TEST_REDIS_URL`: a service container in CI, and a throwaway container locally.
+    - The script's Valkey-specific tests use a real Valkey through `PITCHBEND_LIVE_TEST_REDIS_URL`: a service container in CI, and a throwaway container locally.
 
 ### Browser
 12. **Signalsmith Stretch 1.3.2** inlines its WASM and builds its AudioWorklet from a **Blob URL** at runtime:

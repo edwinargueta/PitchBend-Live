@@ -8,14 +8,14 @@ import fakeredis
 import pytest
 from fastapi.testclient import TestClient
 
-from keyshift.audio import ffmpeg, key_detection
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.main import create_app
-from keyshift.services import Services
-from keyshift.settings import Settings
-from keyshift.worker.context import WorkerDeps
-from keyshift.worker.upload import ingest_upload
+from pitchbend_live.audio import ffmpeg, key_detection
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.main import create_app
+from pitchbend_live.services import Services
+from pitchbend_live.settings import Settings
+from pitchbend_live.worker.context import WorkerDeps
+from pitchbend_live.worker.upload import ingest_upload
 from tests.conftest import FakeLimiter, FakeQueue, requires_ffmpeg
 from tests.test_audio_ffmpeg import FORMATS, make_fixture
 from tests.worker_fakes import KEY_RESULT

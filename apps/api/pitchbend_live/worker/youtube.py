@@ -30,17 +30,17 @@ from yt_dlp.utils import (  # type: ignore[import-untyped]
     GeoRestrictedError,
 )
 
-from keyshift.db import repository as repo
-from keyshift.errors import ErrorCode
-from keyshift.events import ProgressThrottle, progress_data, publish
-from keyshift.logs import SilentYtDlpLogger
-from keyshift.settings import Settings
-from keyshift.storage import cache_dir
-from keyshift.titles import sanitize_title
-from keyshift.worker.pipeline import IngestError, JobGone, JobRun, SourceAudio, run_ingest
-from keyshift.youtube import video_id_from_source_key, watch_url
+from pitchbend_live.db import repository as repo
+from pitchbend_live.errors import ErrorCode
+from pitchbend_live.events import ProgressThrottle, progress_data, publish
+from pitchbend_live.logs import SilentYtDlpLogger
+from pitchbend_live.settings import Settings
+from pitchbend_live.storage import cache_dir
+from pitchbend_live.titles import sanitize_title
+from pitchbend_live.worker.pipeline import IngestError, JobGone, JobRun, SourceAudio, run_ingest
+from pitchbend_live.youtube import video_id_from_source_key, watch_url
 
-logger = logging.getLogger("keyshift.worker")
+logger = logging.getLogger("pitchbend_live.worker")
 
 # Patchable in tests (a fake YoutubeDL; no real YouTube in tests).
 YoutubeDL: Any = yt_dlp.YoutubeDL

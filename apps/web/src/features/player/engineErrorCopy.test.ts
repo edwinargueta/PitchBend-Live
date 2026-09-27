@@ -11,7 +11,7 @@ const CHROME =
 const VSCODE =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.104.0 Chrome/138.0.7204.235 Electron/37.3.1 Safari/537.36";
 
-const BROWSER_TITLE = "This browser can’t play KeyShift audio";
+const BROWSER_TITLE = "This browser can’t play PitchBend Live audio";
 const OPEN_ELSEWHERE = "Open this page in Chrome, Safari or Firefox.";
 
 describe("isEmbeddedBrowser", () => {
@@ -26,14 +26,14 @@ describe("isEmbeddedBrowser", () => {
 });
 
 describe("describeEngineError", () => {
-  it("unsupported: the browser can't play KeyShift audio, open another one", () => {
+  it("unsupported: the browser can't play PitchBend Live audio, open another one", () => {
     const copy = describeEngineError(
       new EngineError("unsupported", "No AudioWorklet."),
       CHROME,
     );
     expect(copy.title).toBe(BROWSER_TITLE);
     expect(copy.message).toBe(
-      `It’s missing Web Audio features KeyShift needs. Embedded browsers like VS Code’s built-in browser lack the AAC decoder or block WebAssembly. ${OPEN_ELSEWHERE}`,
+      `It’s missing Web Audio features PitchBend Live needs. Embedded browsers like VS Code’s built-in browser lack the AAC decoder or block WebAssembly. ${OPEN_ELSEWHERE}`,
     );
     expect(copy.retryable).toBe(false);
   });
@@ -45,7 +45,7 @@ describe("describeEngineError", () => {
     );
     expect(copy.title).toBe(BROWSER_TITLE);
     expect(copy.message).toMatch(
-      /^It blocks WebAssembly, which KeyShift’s pitch shifter needs/,
+      /^It blocks WebAssembly, which PitchBend Live’s pitch shifter needs/,
     );
     expect(copy.message).toContain(OPEN_ELSEWHERE);
     expect(copy.retryable).toBe(false);
@@ -56,13 +56,13 @@ describe("describeEngineError", () => {
     const plain = describeEngineError(err, CHROME);
     expect(plain.title).toBe(BROWSER_TITLE);
     expect(plain.message).toMatch(
-      /^It can’t decode AAC audio, the format KeyShift plays\./,
+      /^It can’t decode AAC audio, the format PitchBend Live plays\./,
     );
     expect(plain.retryable).toBe(false);
 
     const embedded = describeEngineError(err, VSCODE);
     expect(embedded.message).toBe(
-      `It can’t decode AAC audio, the format KeyShift plays. This looks like an embedded browser (such as VS Code’s built-in one), and those lack the AAC decoder or block WebAssembly. ${OPEN_ELSEWHERE}`,
+      `It can’t decode AAC audio, the format PitchBend Live plays. This looks like an embedded browser (such as VS Code’s built-in one), and those lack the AAC decoder or block WebAssembly. ${OPEN_ELSEWHERE}`,
     );
   });
 

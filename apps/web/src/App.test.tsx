@@ -84,7 +84,7 @@ describe("App", () => {
   it("renders the input screen", () => {
     render(<App />);
     expect(
-      screen.getByRole("heading", { level: 1, name: "KeyShift" }),
+      screen.getByRole("heading", { level: 1, name: "PitchBend Live" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("YouTube link")).toBeInTheDocument();
     expect(

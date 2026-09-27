@@ -1,6 +1,6 @@
 """Track and job persistence (ARCHITECTURE.md §6.7, ADR 0005 §4, §6, §14).
 
-Plain functions over a ``sqlite3.Connection``; ``keyshift.db.Database`` runs them in a
+Plain functions over a ``sqlite3.Connection``; ``pitchbend_live.db.Database`` runs them in a
 worker thread so the event loop never waits on SQLite's lock.
 
 Status values (ADR 0005 §6): ``tracks.status`` is ``queued | fetching | ready | error``;
@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Literal
 
-from keyshift.clock import ts_after
-from keyshift.db.connection import transaction
+from pitchbend_live.clock import ts_after
+from pitchbend_live.db.connection import transaction
 
 Source = Literal["youtube", "upload"]
 

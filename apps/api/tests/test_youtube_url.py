@@ -2,7 +2,7 @@
 
 import pytest
 
-from keyshift.youtube import (
+from pitchbend_live.youtube import (
     extract_video_id,
     parse_youtube_url,
     video_id_from_source_key,

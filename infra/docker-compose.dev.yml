@@ -1,4 +1,4 @@
-# KeyShift local development (D17, ADR 0001). Production runs from infra/k8s/, never from this file.
+# PitchBend Live local development (D17, ADR 0001). Production runs from infra/k8s/, never from this file.
 #
 # The host needs only Docker + git. From the repo root:
 #   docker compose -f infra/docker-compose.dev.yml up --build     # app at http://localhost:5173
@@ -11,14 +11,14 @@
 # to the §6.2 values, and an optional apps/api/.env (git-ignored) overrides them at runtime.
 # Never pass secrets as build args.
 
-name: keyshift
+name: pitchbend-live
 
 x-api-common: &api-common
   build:
     context: ..
     dockerfile: infra/docker/api.Dockerfile
     target: dev
-  image: keyshift-api:dev
+  image: pitchbend-live-api:dev
   env_file:
     - path: ../apps/api/.env
       required: false
@@ -27,7 +27,7 @@ x-api-common: &api-common
     WATCHFILES_FORCE_POLLING: "true"
   volumes:
     - ../apps/api:/app
-    - keyshift-data:/data
+    - pitchbend-live-data:/data
 
 services:
   api:
@@ -46,7 +46,7 @@ services:
 
   worker:
     <<: *api-common
-    command: ["arq", "--watch", "keyshift", "keyshift.worker.WorkerSettings"]
+    command: ["arq", "--watch", "pitchbend_live", "pitchbend_live.worker.WorkerSettings"]
     depends_on:
       valkey:
         condition: service_healthy
@@ -55,7 +55,7 @@ services:
       api:
         condition: service_started
     healthcheck:
-      test: ["CMD", "arq", "--check", "keyshift.worker.WorkerSettings"]
+      test: ["CMD", "arq", "--check", "pitchbend_live.worker.WorkerSettings"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -77,7 +77,7 @@ services:
     image: nginxinc/nginx-unprivileged:1.30.5-alpine3.24
     volumes:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - keyshift-data:/data:ro
+      - pitchbend-live-data:/data:ro
     depends_on:
       api:
         condition: service_started
@@ -87,7 +87,7 @@ services:
       context: ..
       dockerfile: infra/docker/web.Dockerfile
       target: dev
-    image: keyshift-web:dev
+    image: pitchbend-live-web:dev
     init: true  # `run --rm web pnpm …` makes pnpm PID 1, and pnpm doesn't forward SIGTERM
     environment:
       CHOKIDAR_USEPOLLING: "true"
@@ -108,4 +108,4 @@ services:
       - media
 
 volumes:
-  keyshift-data:
+  pitchbend-live-data:

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from keyshift.settings import Settings, get_settings
+from pitchbend_live.settings import Settings, get_settings
 
 router = APIRouter(tags=["health"])
 

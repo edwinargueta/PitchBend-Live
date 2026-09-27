@@ -2,7 +2,7 @@
 // Titles are untrusted (ADR 0005 §12), so everything is sanitized here.
 
 const MAX_TITLE_LENGTH = 100;
-const FALLBACK_TITLE = "KeyShift export";
+const FALLBACK_TITLE = "PitchBend Live export";
 
 /** A title safe for a download filename on Windows, macOS and Linux. */
 export function sanitizeFilename(input: string | null | undefined): string {

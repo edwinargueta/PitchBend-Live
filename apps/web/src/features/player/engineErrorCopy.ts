@@ -26,18 +26,18 @@ function browserProblem(
   error: EngineError | null,
   embedded: boolean,
 ): Pick<EngineErrorCopy, "title" | "message"> {
-  let reason = "It’s missing Web Audio features KeyShift needs.";
+  let reason = "It’s missing Web Audio features PitchBend Live needs.";
   if (error?.hint === "no-aac") {
-    reason = "It can’t decode AAC audio, the format KeyShift plays.";
+    reason = "It can’t decode AAC audio, the format PitchBend Live plays.";
   } else if (error?.hint === "no-wasm") {
     reason =
-      "It blocks WebAssembly, which KeyShift’s pitch shifter needs — often because of a security setting or a work policy.";
+      "It blocks WebAssembly, which PitchBend Live’s pitch shifter needs — often because of a security setting or a work policy.";
   }
   const advice = embedded
     ? `This looks like an embedded browser (such as VS Code’s built-in one), and those lack the AAC decoder or block WebAssembly. ${OPEN_ELSEWHERE}`
     : `Embedded browsers like VS Code’s built-in browser lack the AAC decoder or block WebAssembly. ${OPEN_ELSEWHERE}`;
   return {
-    title: "This browser can’t play KeyShift audio",
+    title: "This browser can’t play PitchBend Live audio",
     message: `${reason} ${advice}`,
   };
 }

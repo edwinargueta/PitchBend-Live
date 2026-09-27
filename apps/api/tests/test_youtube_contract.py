@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from keyshift.youtube import extract_video_id
+from pitchbend_live.youtube import extract_video_id
 
 _TABLE = json.loads((Path(__file__).parent / "fixtures" / "youtube_urls.json").read_text())
 

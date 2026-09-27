@@ -1,4 +1,4 @@
-# KeyShift production manifests: the only environment (CLAUDE.md §5). Deploy
+# PitchBend Live production manifests: the only environment (CLAUDE.md §5). Deploy
 # with infra/scripts/deploy.sh <git-sha>, which applies a temporary overlay that
 # sets both image tags. It never edits this file.
 #
@@ -7,11 +7,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: keyshift
+namespace: pitchbend-live
 
 labels:
   - pairs:
-      app.kubernetes.io/part-of: keyshift
+      app.kubernetes.io/part-of: pitchbend-live
     # Selectors are immutable, so keep this label out of them (and out of pod
     # templates; each manifest sets it there itself).
     includeSelectors: false
@@ -35,21 +35,21 @@ resources:
 # ImagePullBackOff; it never falls back to `latest`. deploy.sh overrides newTag
 # with the git SHA of an image CI has pushed to GHCR.
 images:
-  - name: ghcr.io/edwinargueta/keyshift-api
+  - name: ghcr.io/edwinargueta/pitchbend-live-api
     newTag: set-by-deploy-sh
-  - name: ghcr.io/edwinargueta/keyshift-web
+  - name: ghcr.io/edwinargueta/pitchbend-live-web
     newTag: set-by-deploy-sh
 
 # PUBLIC_HOST is set once, in the ConfigMap, and copied into the Ingress.
 replacements:
   - source:
       kind: ConfigMap
-      name: keyshift-config
+      name: pitchbend-live-config
       fieldPath: data.PUBLIC_HOST
     targets:
       - select:
           kind: Ingress
-          name: keyshift
+          name: pitchbend-live
         fieldPaths:
           - spec.rules.0.host
           - spec.tls.0.hosts.0

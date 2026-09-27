@@ -146,7 +146,7 @@ async def _handle_http_error(request: Request, exc: Exception) -> JSONResponse:
 
 async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
     # Starlette's ServerErrorMiddleware re-raises after this handler, so uvicorn logs the
-    # traceback once (as JSON, via keyshift.logs); the client only sees INTERNAL.
+    # traceback once (as JSON, via pitchbend_live.logs); the client only sees INTERNAL.
     return error_response(ApiError(ErrorCode.INTERNAL))
 
 

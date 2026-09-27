@@ -1,6 +1,6 @@
-# KeyShift
+# PitchBend Live
 
-Paste a YouTube link or upload a song, hear it right away, and transpose it up or down by semitones **without changing tempo**. KeyShift detects the original key, shows the new key live as you turn the dial, and lets you download the transposed audio.
+Paste a YouTube link or upload a song, hear it right away, and transpose it up or down by semitones **without changing tempo**. PitchBend Live detects the original key, shows the new key live as you turn the dial, and lets you download the transposed audio.
 
 It's built to run at **$0/month** on a single Oracle Always-Free Ampere A1 (arm64) VM with single-node Kubernetes.
 
@@ -32,7 +32,7 @@ The `Makefile` is the entry point, in the same style as the Sudoku repo. Run `ma
 | What runs where | API (uvicorn), worker (arq) and Vite natively. Only Valkey and the `/media` nginx in Docker. | Everything in Docker Compose, built from the same images as CI |
 | Needs | Docker, git, make, **uv**, and **Node 24** (via nvm; `apps/web/.nvmrc`) | Docker, git, make |
 | First time | `make setup` (installs the API deps into `apps/api/.venv` and the web deps into `apps/web/node_modules`) | nothing; the first run builds the images |
-| Local data | `.data/` (git-ignored) | the `keyshift-data` Docker volume |
+| Local data | `.data/` (git-ignored) | the `pitchbend-live-data` Docker volume |
 | Good for | the fastest reloads, and editor autocomplete/imports | exactly what CI and production run |
 
 ```sh
@@ -75,7 +75,7 @@ Run these from the repo root.
 | Add a Python dependency | `make api-run CMD="uv add <pkg>"` (updates `pyproject.toml` + `uv.lock`), then `make up` and `make setup` |
 | Add a web dependency | `make web-run CMD="pnpm add <pkg>"` (updates `package.json` + `pnpm-lock.yaml`), then `make up` (rebuilds and refreshes the container's `node_modules`) and `make setup` (refreshes the host deps for `make dev`) |
 | A shell / any command in a container | `make api-shell` · `make web-shell` · `make api-run CMD="…"` · `make web-run CMD="…"` |
-| Build the production images locally | `make images` (tags `keyshift-{api,web}:local`; never pushed, and there's deliberately no `publish` target) |
+| Build the production images locally | `make images` (tags `pitchbend-live-{api,web}:local`; never pushed, and there's deliberately no `publish` target) |
 | Free disk (remove local images and artifacts) | `make clean` (local data stays; `make reset` wipes it) |
 
 Under the hood, each target is plain `docker compose -f infra/docker-compose.dev.yml …`. For example, `make test-api` runs `docker compose … run --rm --no-deps api uv run pytest -q`, so the raw commands still work.
@@ -90,9 +90,9 @@ The API reads the [§6.2](ARCHITECTURE.md) keys from its environment, and its de
 
 ## Production (Oracle VM)
 
-The `keyshift` namespace on the Oracle VM is KeyShift's **only** environment. There is no staging, so every command below is a production action. Deploys are manual: CI builds images but never holds cluster credentials.
+The `pitchbend-live` namespace on the Oracle VM is PitchBend Live's **only** environment. There is no staging, so every command below is a production action. Deploys are manual: CI builds images but never holds cluster credentials.
 
-**The VM is shared.** It's a 1 OCPU / 6 GB k3s node that also runs the **Sudoku Solver** (namespace `sudoku-prod`, `sudoku-csp.duckdns.org`). The two apps share Traefik, cert-manager, the `letsencrypt-prod` ClusterIssuer (installed by the Sudoku repo), and the single core. KeyShift is sized to fit ([ARCHITECTURE.md §3.6–3.7](ARCHITECTURE.md), [ADR 0003](docs/adr/0003-shared-cluster-with-sudoku-solver.md)). Never install or upgrade cert-manager or edit the issuer from this repo, and never touch `sudoku-prod`.
+**The VM is shared.** It's a 1 OCPU / 6 GB k3s node that also runs the **Sudoku Solver** (namespace `sudoku-prod`, `sudoku-csp.duckdns.org`). The two apps share Traefik, cert-manager, the `letsencrypt-prod` ClusterIssuer (installed by the Sudoku repo), and the single core. PitchBend Live is sized to fit ([ARCHITECTURE.md §3.6–3.7](ARCHITECTURE.md), [ADR 0003](docs/adr/0003-shared-cluster-with-sudoku-solver.md)). Never install or upgrade cert-manager or edit the issuer from this repo, and never touch `sudoku-prod`.
 
 **Cluster access:** the k3s API isn't exposed publicly. If you already reach it for Sudoku, reuse that setup. Otherwise, open an SSH tunnel to the VM and use its kubeconfig, which holds cluster-admin credentials: keep it in `~/.kube/`, never in the repo.
 
@@ -116,7 +116,7 @@ It's read-only. It checks:
 - the shared cert-manager and `letsencrypt-prod` ClusterIssuer
 - the default StorageClass
 - the pod CIDR
-- whether the node has room for KeyShift next to Sudoku and k3s: it compares allocatable capacity with every namespace's requests, and wants ≥ 250m CPU left free so Sudoku's rollouts don't hang
+- whether the node has room for PitchBend Live next to Sudoku and k3s: it compares allocatable capacity with every namespace's requests, and wants ≥ 250m CPU left free so Sudoku's rollouts don't hang
 - whether the shared Traefik config (step 2) is applied
 
 - **Pod CIDR:** `FORWARDED_ALLOW_IPS` in `infra/k8s/api.yaml` must cover it. The default is `10.42.0.0/16`, k3s's default. Without it, rate limiting in Phase 1 would see the Ingress pod's IP instead of the user's.
@@ -135,7 +135,7 @@ curl -sI https://sudoku-csp.duckdns.org | head -1              # Sudoku still up
 
 ### 3. One-time: GitHub and GHCR
 
-1. Create the public repo `edwinargueta/PitchBend-Live` and push `main`. The *Images* workflow builds `linux/arm64` images and pushes `ghcr.io/edwinargueta/keyshift-api:<sha>` and `keyshift-web:<sha>`.
+1. Create the public repo `edwinargueta/PitchBend-Live` and push `main`. The *Images* workflow builds `linux/arm64` images and pushes `ghcr.io/edwinargueta/pitchbend-live-api:<sha>` and `pitchbend-live-web:<sha>`.
 2. GHCR creates new packages as **private**. Make both packages **public**: GitHub → your profile → *Packages* → package → *Package settings* → *Change visibility*. The cluster pulls anonymously, and `deploy.sh` refuses to deploy until both are public.
 
 ### 4. Namespace and Secret
@@ -148,7 +148,7 @@ Run these in **bash** (in zsh, `read -p` means something else; type `bash` first
 kubectl apply -f infra/k8s/namespace.yaml
 read -rsp 'DUCKDNS_TOKEN: ' DUCKDNS_TOKEN; echo
 read -rsp 'SENTRY_DSN (Enter for none): ' SENTRY_DSN; echo
-kubectl -n keyshift create secret generic keyshift-secrets \
+kubectl -n pitchbend-live create secret generic pitchbend-live-secrets \
   --from-file=DUCKDNS_TOKEN=<(printf '%s' "$DUCKDNS_TOKEN") \
   --from-file=SENTRY_DSN=<(printf '%s' "$SENTRY_DSN")
 unset DUCKDNS_TOKEN SENTRY_DSN
@@ -167,29 +167,29 @@ infra/scripts/deploy.sh "$(git rev-parse HEAD)"   # the SHA must have images in 
 ### 6. Verify (Phase 0 acceptance)
 
 ```sh
-curl -I https://keyshift.duckdns.org                        # 200, valid Let's Encrypt cert
-kubectl -n keyshift get certificate                          # READY=True
-curl -s https://keyshift.duckdns.org/api/health              # {"status":"ok","version":"<sha>"}
-curl -N https://keyshift.duckdns.org/api/health/stream       # ticks arrive ~1 s apart, not all at the end
+curl -I https://pitchbend-live.duckdns.org                        # 200, valid Let's Encrypt cert
+kubectl -n pitchbend-live get certificate                          # READY=True
+curl -s https://pitchbend-live.duckdns.org/api/health              # {"status":"ok","version":"<sha>"}
+curl -N https://pitchbend-live.duckdns.org/api/health/stream       # ticks arrive ~1 s apart, not all at the end
 head -c 52428800 /dev/urandom > /tmp/50mb.bin
 curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Expect:' --data-binary @/tmp/50mb.bin \
-  https://keyshift.duckdns.org/api/health                    # anything but 413 (405 is expected)
+  https://pitchbend-live.duckdns.org/api/health                    # anything but 413 (405 is expected)
 # -H 'Expect:' stops curl waiting for "100 Continue", so the full 50 MB is actually sent.
-kubectl -n keyshift get pods                                 # all Ready
-kubectl -n keyshift get jobs                                 # latest duckdns job Complete
+kubectl -n pitchbend-live get pods                                 # all Ready
+kubectl -n pitchbend-live get jobs                                 # latest duckdns job Complete
 curl -sI https://sudoku-csp.duckdns.org | head -1            # the neighbor is still healthy
 kubectl -n sudoku-prod get pods                              # read-only look: all Ready, none Pending
 ```
 
-Also confirm that rebooting the VM brings everything back with no manual steps. Then confirm that `kubectl delete namespace keyshift` followed by steps 4–5 rebuilds everything. **Deleting the namespace also deletes the Secret and all data.**
+Also confirm that rebooting the VM brings everything back with no manual steps. Then confirm that `kubectl delete namespace pitchbend-live` followed by steps 4–5 rebuilds everything. **Deleting the namespace also deletes the Secret and all data.**
 
 **Phase 1 checks after deploying.** These are things only the VM can prove:
 - Upload a song in the browser. Progress stages appear, the player shows before the key does, the dial shifts pitch live, and the WAV downloads.
-- Paste a real YouTube link. It either plays, or shows the "YouTube blocked this request — try uploading the file instead" message, since datacenter IPs are often blocked. The worker logs (`kubectl -n keyshift logs deploy/worker`) show the job's stages.
+- Paste a real YouTube link. It either plays, or shows the "YouTube blocked this request — try uploading the file instead" message, since datacenter IPs are often blocked. The worker logs (`kubectl -n pitchbend-live logs deploy/worker`) show the job's stages.
 - Re-submit the same link or file. It answers at once from the cache.
 - Check real devices once: Chrome, Firefox, Safari, and one phone. The dial change should be audible within about 100 ms, with no clicks.
 
-Uptime Kuma has no Ingress. Reach it with `kubectl -n keyshift port-forward svc/uptime-kuma 3001:3001` and open http://localhost:3001.
+Uptime Kuma has no Ingress. Reach it with `kubectl -n pitchbend-live port-forward svc/uptime-kuma 3001:3001` and open http://localhost:3001.
 
 ### Ingress controller notes
 
@@ -217,7 +217,7 @@ Any change to `ingress.yaml` must keep these properties and be re-verified with 
 
 ## Known limitations
 
-- YouTube often blocks datacenter IPs such as Oracle's. When that happens, KeyShift says so and suggests uploading the file instead. YouTube ingest is covered by tests with a mocked yt-dlp; the first real fetch happens on the VM.
+- YouTube often blocks datacenter IPs such as Oracle's. When that happens, PitchBend Live says so and suggests uploading the file instead. YouTube ingest is covered by tests with a mocked yt-dlp; the first real fetch happens on the VM.
 - `make dev` needs `ffmpeg` on your machine for uploads (`brew install ffmpeg`), whereas `make up` needs nothing extra.
 - The engine keeps about 2× the decoded song in memory (≈ 170 MB for 4 minutes), which can be tight on old phones.
 - Playback needs a browser that decodes AAC and runs WebAssembly in an AudioWorklet. Embedded browsers such as VS Code's built-in browser (Chromium without proprietary codecs) can't decode AAC, and hardened setups (Chromium `--jitless`, Edge's enhanced security, Safari's Lockdown Mode, some managed-browser policies) turn WebAssembly off. The player then says so and suggests Chrome, Safari or Firefox; its "Technical details" hold the raw error for bug reports.

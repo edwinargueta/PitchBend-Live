@@ -16,8 +16,8 @@ import numpy as np
 import pytest
 from key_fixtures import synth
 
-from keyshift.audio import key_detection as kd
-from keyshift.audio.key_detection import (
+from pitchbend_live.audio import key_detection as kd
+from pitchbend_live.audio.key_detection import (
     PITCH_CLASSES,
     KeyCandidate,
     KeyDetectionError,
@@ -64,7 +64,7 @@ def assert_well_formed(result: KeyResult) -> None:
 def test_importing_the_module_does_not_import_librosa() -> None:
     """The API process imports this module; librosa (numba, scipy) must load lazily."""
     code = (
-        "import sys, keyshift.audio.key_detection\n"
+        "import sys, pitchbend_live.audio.key_detection\n"
         "heavy = [m for m in ('librosa', 'numba', 'scipy') if m in sys.modules]\n"
         "assert not heavy, heavy\n"
     )

@@ -9,14 +9,14 @@ from pathlib import Path
 import pytest
 from pydantic import SecretStr
 
-from keyshift.settings import Settings
+from pitchbend_live.settings import Settings
 
-# ARCHITECTURE.md §6.2, ConfigMap keyshift-config (verbatim).
+# ARCHITECTURE.md §6.2, ConfigMap pitchbend_live-config (verbatim).
 CONFIGMAP: dict[str, str | int] = {
-    "PUBLIC_HOST": "keyshift.duckdns.org",
-    "DUCKDNS_SUBDOMAIN": "keyshift",
+    "PUBLIC_HOST": "pitchbend-live.duckdns.org",
+    "DUCKDNS_SUBDOMAIN": "pitchbend_live",
     "REDIS_URL": "redis://valkey:6379/0",
-    "DB_PATH": "/data/db/keyshift.db",
+    "DB_PATH": "/data/db/pitchbend-live.db",
     "MEDIA_DIR": "/data/media",
     "MEDIA_BASE_URL": "/media",
     "MAX_DURATION_S": 720,
@@ -26,7 +26,7 @@ CONFIGMAP: dict[str, str | int] = {
     "WORKER_CONCURRENCY": 1,
     "TMP_DIR": "/data/tmp",
 }
-# ARCHITECTURE.md §6.2, Secret keyshift-secrets. The code defaults to empty strings;
+# ARCHITECTURE.md §6.2, Secret pitchbend_live-secrets. The code defaults to empty strings;
 # the placeholder values below appear only in .env.example / secret.example.yaml.
 SECRET_PLACEHOLDERS: dict[str, str] = {"DUCKDNS_TOKEN": "changeme", "SENTRY_DSN": ""}
 BUILD_METADATA = {"GIT_SHA"}

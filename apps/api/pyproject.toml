@@ -1,7 +1,7 @@
 [project]
-name = "keyshift"
+name = "pitchbend-live"
 version = "0.0.0"
-description = "KeyShift API (FastAPI) and background worker (ARQ)"
+description = "PitchBend Live API (FastAPI) and background worker (ARQ)"
 requires-python = "==3.12.*"
 license = "GPL-3.0-or-later"
 dependencies = [
@@ -37,7 +37,7 @@ build-backend = "uv_build"
 required-environments = ["sys_platform == 'linux' and platform_machine == 'aarch64'"]
 
 [tool.uv.build-backend]
-module-name = "keyshift"
+module-name = "pitchbend_live"
 module-root = ""
 
 [tool.ruff]
@@ -48,7 +48,7 @@ line-length = 100
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["keyshift"]
+known-first-party = ["pitchbend_live"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -67,7 +67,7 @@ addopts = ["-ra", "--strict-markers", "--strict-config"]
 markers = ["slow: long-running performance tests"]
 
 [tool.coverage.run]
-source = ["keyshift"]
+source = ["pitchbend_live"]
 branch = true
 
 [tool.coverage.report]

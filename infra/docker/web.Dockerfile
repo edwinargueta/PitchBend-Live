@@ -1,9 +1,9 @@
-# KeyShift web image (ARCHITECTURE.md §9 task 4, ADR 0001).
+# PitchBend Live web image (ARCHITECTURE.md §9 task 4, ADR 0001).
 #
 # Build context is the REPO ROOT, filtered by the allowlist in
 # infra/docker/web.Dockerfile.dockerignore:
-#   docker build -f infra/docker/web.Dockerfile --target dev  -t keyshift-web:dev .
-#   docker build -f infra/docker/web.Dockerfile --target prod -t keyshift-web:prod .
+#   docker build -f infra/docker/web.Dockerfile --target dev  -t pitchbend-live-web:dev .
+#   docker build -f infra/docker/web.Dockerfile --target prod -t pitchbend-live-web:prod .
 #
 # Targets:
 #   dev    Vite dev server on 0.0.0.0:5173; all dev deps + source baked in so CI
@@ -63,8 +63,8 @@ ARG GIT_SHA=unknown
 
 # Also overrides labels inherited from the nginx base image (url, version,
 # revision, maintainer) that would otherwise point at nginx's repo.
-LABEL org.opencontainers.image.title="keyshift-web" \
-      org.opencontainers.image.description="KeyShift SPA and /media static server" \
+LABEL org.opencontainers.image.title="pitchbend-live-web" \
+      org.opencontainers.image.description="PitchBend Live SPA and /media static server" \
       org.opencontainers.image.source="https://github.com/edwinargueta/PitchBend-Live" \
       org.opencontainers.image.url="https://github.com/edwinargueta/PitchBend-Live" \
       org.opencontainers.image.licenses="GPL-3.0-or-later" \

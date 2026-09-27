@@ -1,10 +1,10 @@
-# KeyShift api + worker image (the worker runs the same image with
-# `arq keyshift.worker.WorkerSettings`, D16).
+# PitchBend Live api + worker image (the worker runs the same image with
+# `arq pitchbend_live.worker.WorkerSettings`, D16).
 #
 # Build context is the REPO ROOT; only paths allowlisted in
 # infra/docker/api.Dockerfile.dockerignore are sent:
-#   docker build -f infra/docker/api.Dockerfile --target dev  -t keyshift-api:dev .
-#   docker build -f infra/docker/api.Dockerfile --build-arg GIT_SHA=$(git rev-parse --short HEAD) -t keyshift-api:<sha> .
+#   docker build -f infra/docker/api.Dockerfile --target dev  -t pitchbend-live-api:dev .
+#   docker build -f infra/docker/api.Dockerfile --build-arg GIT_SHA=$(git rev-parse --short HEAD) -t pitchbend-live-api:<sha> .
 #
 # Targets: `dev` (Docker Compose, CI lint/tests) and `prod` (last stage = default; CI → GHCR → K8s).
 # Never pass secrets as build args: GHCR images are public (CLAUDE.md §2).
@@ -30,9 +30,9 @@ RUN apt-get update \
 
 # Fixed uid/gid 10001 so K8s securityContext/fsGroup and Compose named volumes agree.
 # /data/{media,db} are pre-created so a fresh named volume inherits 10001 ownership.
-RUN groupadd --system --gid 10001 keyshift \
+RUN groupadd --system --gid 10001 pitchbend \
     && useradd --system --uid 10001 --gid 10001 --no-create-home \
-       --home-dir /nonexistent --shell /usr/sbin/nologin keyshift \
+       --home-dir /nonexistent --shell /usr/sbin/nologin pitchbend \
     && mkdir -p /data/media /data/db /data/tmp \
     && chown -R 10001:10001 /data
 
@@ -64,13 +64,13 @@ COPY --chown=10001:10001 apps/api/pyproject.toml apps/api/uv.lock ./
 RUN --mount=type=cache,target=/tmp/uv-cache,uid=10001,gid=10001 \
     uv sync --frozen --no-install-project
 
-COPY --chown=10001:10001 apps/api/keyshift ./keyshift
+COPY --chown=10001:10001 apps/api/pitchbend_live ./pitchbend_live
 COPY --chown=10001:10001 apps/api/tests ./tests
 RUN --mount=type=cache,target=/tmp/uv-cache,uid=10001,gid=10001 \
     uv sync --frozen
 
 EXPOSE 8000
-CMD ["uvicorn", "keyshift.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--reload"]
+CMD ["uvicorn", "pitchbend_live.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--reload"]
 
 # ---------------------------------------------------------------------------
 # build: resolve the production venv (no dev group, non-editable) for prod
@@ -91,7 +91,7 @@ COPY apps/api/pyproject.toml apps/api/uv.lock ./
 RUN --mount=type=cache,target=/tmp/uv-cache \
     uv sync --frozen --no-dev --no-install-project
 
-COPY apps/api/keyshift ./keyshift
+COPY apps/api/pitchbend_live ./pitchbend_live
 RUN --mount=type=cache,target=/tmp/uv-cache \
     uv sync --frozen --no-dev --no-editable
 
@@ -106,7 +106,7 @@ COPY --from=build /opt/venv /opt/venv
 ARG GIT_SHA=dev
 ENV GIT_SHA=${GIT_SHA}
 
-LABEL org.opencontainers.image.title="keyshift-api" \
+LABEL org.opencontainers.image.title="pitchbend-live-api" \
       org.opencontainers.image.source="https://github.com/edwinargueta/PitchBend-Live" \
       org.opencontainers.image.licenses="GPL-3.0-or-later" \
       org.opencontainers.image.revision="${GIT_SHA}"
@@ -115,4 +115,4 @@ USER 10001
 EXPOSE 8000
 # --forwarded-allow-ips is deliberately not set here: uvicorn reads FORWARDED_ALLOW_IPS
 # from the environment (set to the pod CIDR by the K8s manifest, CLAUDE.md §5).
-CMD ["uvicorn", "keyshift.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+CMD ["uvicorn", "pitchbend_live.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]

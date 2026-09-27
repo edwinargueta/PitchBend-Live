@@ -7,14 +7,14 @@ import fakeredis
 import pytest
 from fastapi.testclient import TestClient
 
-from keyshift.audio.ffmpeg import ProbeResult
-from keyshift.db import Database
-from keyshift.db.migrate import apply_migrations
-from keyshift.main import create_app
-from keyshift.ratelimit import RateDecision
-from keyshift.services import Services
-from keyshift.settings import Settings, get_settings
-from keyshift.storage import ensure_dirs
+from pitchbend_live.audio.ffmpeg import ProbeResult
+from pitchbend_live.db import Database
+from pitchbend_live.db.migrate import apply_migrations
+from pitchbend_live.main import create_app
+from pitchbend_live.ratelimit import RateDecision
+from pitchbend_live.services import Services
+from pitchbend_live.settings import Settings, get_settings
+from pitchbend_live.storage import ensure_dirs
 
 HAS_FFMPEG = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
 requires_ffmpeg = pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg/ffprobe not installed")
@@ -28,7 +28,7 @@ def anyio_backend() -> str:
 @pytest.fixture(autouse=True)
 def _isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Every test gets its own data dirs, and get_settings() re-reads the environment."""
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "data" / "db" / "keyshift.db"))
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "data" / "db" / "pitchbend-live.db"))
     monkeypatch.setenv("MEDIA_DIR", str(tmp_path / "data" / "media"))
     monkeypatch.setenv("TMP_DIR", str(tmp_path / "data" / "tmp"))
     get_settings.cache_clear()

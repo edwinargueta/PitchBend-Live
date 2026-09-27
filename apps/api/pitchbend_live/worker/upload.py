@@ -8,10 +8,10 @@ to AAC m4a (ARCHITECTURE.md §10 A4, D8).
 import asyncio
 from typing import Any
 
-from keyshift.errors import ErrorCode
-from keyshift.storage import staged_upload_path
-from keyshift.titles import FALLBACK_TITLE
-from keyshift.worker.pipeline import IngestError, JobRun, SourceAudio, run_ingest
+from pitchbend_live.errors import ErrorCode
+from pitchbend_live.storage import staged_upload_path
+from pitchbend_live.titles import FALLBACK_TITLE
+from pitchbend_live.worker.pipeline import IngestError, JobRun, SourceAudio, run_ingest
 
 
 async def upload_source(run: JobRun) -> SourceAudio:

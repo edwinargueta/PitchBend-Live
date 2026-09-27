@@ -5,8 +5,8 @@ from typing import Any, cast
 
 from redis.asyncio import Redis
 
-from keyshift.db import Database
-from keyshift.settings import Settings
+from pitchbend_live.db import Database
+from pitchbend_live.settings import Settings
 
 
 @dataclass

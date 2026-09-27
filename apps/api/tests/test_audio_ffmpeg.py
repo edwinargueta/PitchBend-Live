@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from keyshift.audio import ffmpeg
-from keyshift.audio.ffmpeg import FFmpegError, ProbeResult, parse_probe
+from pitchbend_live.audio import ffmpeg
+from pitchbend_live.audio.ffmpeg import FFmpegError, ProbeResult, parse_probe
 from tests.conftest import requires_ffmpeg
 
 pytestmark = pytest.mark.anyio
@@ -224,7 +224,7 @@ async def make_fixture(path: Path, extra: list[str], seconds: float = 1.0) -> Pa
 async def test_real_fixtures_probe_sniff_and_normalize(
     tmp_path: Path, ext: str, extra: list[str], family: str, fmt: str
 ) -> None:
-    from keyshift.audio.sniff import sniff_audio
+    from pitchbend_live.audio.sniff import sniff_audio
 
     src = await make_fixture(tmp_path / f"tone.{ext}", extra)
     assert sniff_audio(src.read_bytes()[:16]) == family

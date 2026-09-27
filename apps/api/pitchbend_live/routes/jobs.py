@@ -4,13 +4,19 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from keyshift.clock import now_ts
-from keyshift.db import repository as repo
-from keyshift.errors import ApiError, ErrorCode
-from keyshift.events import stream_job_events
-from keyshift.queue import FETCH_YOUTUBE
-from keyshift.routes.common import JobAccepted, ServicesDep, enforce_rate_limit, ingest, is_uuid4
-from keyshift.youtube import parse_youtube_url
+from pitchbend_live.clock import now_ts
+from pitchbend_live.db import repository as repo
+from pitchbend_live.errors import ApiError, ErrorCode
+from pitchbend_live.events import stream_job_events
+from pitchbend_live.queue import FETCH_YOUTUBE
+from pitchbend_live.routes.common import (
+    JobAccepted,
+    ServicesDep,
+    enforce_rate_limit,
+    ingest,
+    is_uuid4,
+)
+from pitchbend_live.youtube import parse_youtube_url
 
 router = APIRouter(tags=["jobs"])
 

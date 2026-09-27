@@ -9,14 +9,14 @@ import fakeredis
 import pytest
 from fastapi.testclient import TestClient
 
-from keyshift import events
-from keyshift.clock import ts_after
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.db.connection import connect
-from keyshift.main import create_app
-from keyshift.routes import jobs as jobs_route
-from keyshift.services import Services
+from pitchbend_live import events
+from pitchbend_live.clock import ts_after
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.db.connection import connect
+from pitchbend_live.main import create_app
+from pitchbend_live.routes import jobs as jobs_route
+from pitchbend_live.services import Services
 from tests.conftest import FakeLimiter, FakeQueue
 
 ID = "dQw4w9WgXcQ"
@@ -307,7 +307,7 @@ def test_services_are_closed_when_app_built_them(monkeypatch: pytest.MonkeyPatch
             limiter=FakeLimiter(),
         )
 
-    monkeypatch.setattr("keyshift.main.build_services", build)
+    monkeypatch.setattr("pitchbend_live.main.build_services", build)
     with TestClient(create_app()) as c:
         assert c.get("/api/health").status_code == 200
     assert closed == [True]

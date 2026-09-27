@@ -12,16 +12,16 @@ import fakeredis
 import pytest
 from yt_dlp.utils import DownloadError, ExtractorError, GeoRestrictedError
 
-from keyshift.audio import ffmpeg, key_detection
-from keyshift.clock import now_ts, ts_after
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.db.connection import connect
-from keyshift.errors import ErrorCode
-from keyshift.settings import Settings
-from keyshift.storage import staged_upload_path
-from keyshift.worker import pipeline, upload, youtube
-from keyshift.worker.context import WorkerDeps
+from pitchbend_live.audio import ffmpeg, key_detection
+from pitchbend_live.clock import now_ts, ts_after
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.db.connection import connect
+from pitchbend_live.errors import ErrorCode
+from pitchbend_live.settings import Settings
+from pitchbend_live.storage import staged_upload_path
+from pitchbend_live.worker import pipeline, upload, youtube
+from pitchbend_live.worker.context import WorkerDeps
 from tests.worker_fakes import (
     KEY_RESULT,
     VIDEO_ID,

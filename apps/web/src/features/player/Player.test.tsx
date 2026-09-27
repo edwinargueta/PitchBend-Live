@@ -103,7 +103,9 @@ describe("Player", () => {
       }),
     });
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("This browser can’t play KeyShift audio");
+    expect(alert).toHaveTextContent(
+      "This browser can’t play PitchBend Live audio",
+    );
     expect(alert).toHaveTextContent("It can’t decode AAC audio");
     expect(alert).toHaveTextContent(
       "Open this page in Chrome, Safari or Firefox.",

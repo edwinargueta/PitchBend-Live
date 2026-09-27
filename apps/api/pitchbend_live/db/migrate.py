@@ -1,6 +1,6 @@
 """Versioned SQL migrations, applied at startup by both api and worker (ADR 0005 §14).
 
-Files are ``keyshift/db/migrations/NNNN_name.sql``, applied in version order and recorded
+Files are ``pitchbend_live/db/migrations/NNNN_name.sql``, applied in version order and recorded
 in ``schema_migrations``. The whole run happens inside one ``BEGIN IMMEDIATE``
 transaction: two processes starting together serialize on SQLite's write lock, and the
 second one sees the first one's rows and applies nothing. A failing migration rolls back
@@ -12,8 +12,8 @@ import sqlite3
 from dataclasses import dataclass
 from importlib import resources
 
-from keyshift.clock import now_ts
-from keyshift.db.connection import connect, transaction
+from pitchbend_live.clock import now_ts
+from pitchbend_live.db.connection import connect, transaction
 
 _FILENAME = re.compile(r"(\d{4})_([a-z0-9_]+)\.sql")
 
@@ -33,7 +33,7 @@ class Migration:
     sql: str
 
 
-def discover(package: str = "keyshift.db.migrations") -> list[Migration]:
+def discover(package: str = "pitchbend_live.db.migrations") -> list[Migration]:
     found: list[Migration] = []
     for entry in resources.files(package).iterdir():
         match = _FILENAME.fullmatch(entry.name)

@@ -78,7 +78,7 @@ They're settled here, once, before any code, so no workstream resolves them diff
 ### Backend internals (not contracts, recorded for consistency)
 14. **SQLite:**
     - WAL mode, `busy_timeout=5000`, foreign keys on.
-    - Migrations are versioned SQL files (`keyshift/db/migrations/NNNN_name.sql`), recorded in `schema_migrations`, and applied at startup by **both** api and worker under `BEGIN IMMEDIATE`, which makes them idempotent and race-safe. Shipped migration files are never edited.
+    - Migrations are versioned SQL files (`pitchbend_live/db/migrations/NNNN_name.sql`), recorded in `schema_migrations`, and applied at startup by **both** api and worker under `BEGIN IMMEDIATE`, which makes them idempotent and race-safe. Shipped migration files are never edited.
     - The §6.7 schema is exact. The only additions are `schema_migrations` and indexes.
     - Timestamps are UTC ISO-8601 (`YYYY-MM-DDTHH:MM:SSZ`). `expires_at = created_at + MEDIA_TTL_HOURS`, and a cache hit doesn't extend it (24 h retention).
 15. **Worker:**

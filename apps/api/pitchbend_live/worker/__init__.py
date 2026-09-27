@@ -1,4 +1,4 @@
-"""ARQ worker settings (``arq keyshift.worker.WorkerSettings``, D16).
+"""ARQ worker settings (``arq pitchbend_live.worker.WorkerSettings``, D16).
 
 Tasks: ``fetch_youtube`` and ``ingest_upload`` (enqueued by the api with our ``job_id``
 as the ARQ job id) and the ``cleanup`` cron (hourly and at startup). Startup creates
@@ -17,17 +17,17 @@ from arq.connections import RedisSettings
 from arq.cron import CronJob, cron
 from arq.worker import Function, func
 
-from keyshift.db import Database
-from keyshift.logs import configure_logging
-from keyshift.queue import FETCH_YOUTUBE, INGEST_UPLOAD
-from keyshift.settings import get_settings
-from keyshift.storage import cache_dir, prepare_storage
-from keyshift.worker import cleanup as cleanup_module
-from keyshift.worker.context import WorkerDeps
-from keyshift.worker.upload import ingest_upload
-from keyshift.worker.youtube import fetch_youtube
+from pitchbend_live.db import Database
+from pitchbend_live.logs import configure_logging
+from pitchbend_live.queue import FETCH_YOUTUBE, INGEST_UPLOAD
+from pitchbend_live.settings import get_settings
+from pitchbend_live.storage import cache_dir, prepare_storage
+from pitchbend_live.worker import cleanup as cleanup_module
+from pitchbend_live.worker.context import WorkerDeps
+from pitchbend_live.worker.upload import ingest_upload
+from pitchbend_live.worker.youtube import fetch_youtube
 
-logger = logging.getLogger("keyshift.worker")
+logger = logging.getLogger("pitchbend_live.worker")
 
 # Longest single ingest: a 12-minute song's download + transcode + key detection on one
 # shared OCPU. Must stay below repository.STALE_JOB_S.
@@ -49,7 +49,7 @@ async def warm_up_key_detection() -> None:
     """Pay numba's JIT compile (2-4 s) at startup instead of in the first job. Never fatal."""
     try:
         # Imported lazily, like in the task: librosa is heavy and the api never loads it.
-        from keyshift.audio.key_detection import warm_up
+        from pitchbend_live.audio.key_detection import warm_up
 
         await asyncio.to_thread(warm_up)
     except Exception:

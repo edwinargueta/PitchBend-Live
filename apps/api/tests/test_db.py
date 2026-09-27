@@ -7,11 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from keyshift.clock import ts_after
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.db.connection import connect, transaction
-from keyshift.db.migrate import Migration, apply_migrations, discover, split_statements
+from pitchbend_live.clock import ts_after
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.db.connection import connect, transaction
+from pitchbend_live.db.migrate import Migration, apply_migrations, discover, split_statements
 
 NOW = "2026-09-26T12:00:00Z"
 STALE_BEFORE = ts_after(NOW, seconds=-repo.STALE_JOB_S)
@@ -462,7 +462,7 @@ pytestmark = pytest.mark.anyio
 
 
 def test_wal_switch_retries_while_locked(monkeypatch: pytest.MonkeyPatch) -> None:
-    from keyshift.db import connection
+    from pitchbend_live.db import connection
 
     class Conn:
         def __init__(self, failures: int, message: str = "database is locked") -> None:

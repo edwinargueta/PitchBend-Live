@@ -41,7 +41,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="app-title">KeyShift</h1>
+        <h1 className="app-title">PitchBend Live</h1>
         {!track && (
           <p className="tagline">
             Transpose any song to your key, live, without changing the tempo.

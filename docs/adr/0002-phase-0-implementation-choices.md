@@ -58,12 +58,12 @@ Building Phase 0 (ARCHITECTURE.md §9) required choices that §9 leaves open, a 
 - **An echo endpoint for the 50 MB Ingress test:** that would be a §6.4 change. `POST /api/health` with `Expect:` disabled is enough to prove the Ingress doesn't return 413.
 
 ## Verification
-Before any production deploy, the manifests were smoke-tested once on a local throwaway cluster (Rancher Desktop k3s v1.35.4 with Traefik and local-path storage, namespace `keyshift-smoke`, deleted afterward). The overlay used locally built images and plain HTTP. With it:
+Before any production deploy, the manifests were smoke-tested once on a local throwaway cluster (Rancher Desktop k3s v1.35.4 with Traefik and local-path storage, namespace `pitchbend-live-smoke`, deleted afterward). The overlay used locally built images and plain HTTP. With it:
 - All five Deployments became Ready as non-root with no restarts, including Uptime Kuma as uid 1000.
 - SSE ticks arrived 1 s apart through Traefik.
 - A 50 MB POST returned 405, not 413.
 - `/media` served with the 24 h immutable header, and traversal attempts never returned the DB.
-- The web pod was denied reading `/data/db/keyshift.db`.
+- The web pod was denied reading `/data/db/pitchbend-live.db`.
 - A `rollout restart` of api never ran two api pods at once.
 
 ## Consequences

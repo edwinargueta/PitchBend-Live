@@ -49,6 +49,13 @@ function deferred<T>(): {
   return { promise, resolve, reject };
 }
 
+/** Exact sample equality, fast enough for full-length buffers. */
+function sameSamples(a: Float32Array | undefined, b: Float32Array): boolean {
+  return (
+    a !== undefined && a.length === b.length && a.every((v, i) => v === b[i])
+  );
+}
+
 async function flush(): Promise<void> {
   for (let i = 0; i < 10; i++) await Promise.resolve();
 }
@@ -111,9 +118,20 @@ describe("load", () => {
     // The node gets transferable copies; the exposed AudioBuffer stays intact.
     expect(node.buffers).toHaveLength(2);
     const source = f.decoded.buffer.getChannelData(0);
-    expect(node.buffers[0]).not.toBe(source);
-    expect(node.buffers[0]).toEqual(source);
-    expect(node.transfers).toEqual(node.buffers.map((b) => b.buffer));
+    // Object.is, not `.not.toBe`: toBe deep-compares non-identical values (twice)
+    // to suggest toEqual, which is ~1 s for 480k samples.
+    expect(Object.is(node.buffers[0], source)).toBe(false);
+    // Compare samples directly: toEqual walks all 480k elements through its
+    // generic deep-equality path, which took ~3 s under coverage and once
+    // exceeded the 5 s test timeout on the CI runner.
+    expect(node.buffers[0]).toHaveLength(source.length);
+    expect(sameSamples(node.buffers[0], source)).toBe(true);
+    // Identity, not deep equality: the transfer list must be the copies' own
+    // ArrayBuffers (and comparing megabytes byte by byte is slow).
+    expect(node.transfers).toHaveLength(node.buffers.length);
+    (node.transfers ?? []).forEach((transferred, i) => {
+      expect(transferred).toBe(node.buffers[i]?.buffer);
+    });
 
     expect(pct[0]).toBe(0);
     expect(pct).toContain(DOWNLOAD_PCT);
@@ -908,7 +926,12 @@ describe("renderOffline", () => {
     expect(node.options?.outputChannelCount).toEqual([2]);
     expect(node.connect).toHaveBeenCalledWith(offline.destination);
     expect(node.buffers).toHaveLength(2);
-    expect(node.transfers).toEqual(node.buffers.map((b) => b.buffer));
+    // Identity, not deep equality: the transfer list must be the copies' own
+    // ArrayBuffers (and comparing megabytes byte by byte is slow).
+    expect(node.transfers).toHaveLength(node.buffers.length);
+    (node.transfers ?? []).forEach((transferred, i) => {
+      expect(transferred).toBe(node.buffers[i]?.buffer);
+    });
     expect(node.segments).toEqual([
       { output: 0, active: true, input: 0, rate: 1, semitones: 11.7 },
     ]);

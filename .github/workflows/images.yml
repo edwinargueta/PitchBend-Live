@@ -2,7 +2,7 @@
 # (never `latest`) — ARCHITECTURE.md §7, D15. Deployment stays manual (infra/scripts/deploy.sh);
 # this workflow holds no cluster credentials.
 #
-# First run: GHCR creates new packages as PRIVATE. Make keyshift-api and keyshift-web public
+# First run: GHCR creates new packages as PRIVATE. Make pitchbend-live-api and pitchbend-live-web public
 # once (GitHub → Packages → <package> → Package settings → Change visibility) or the cluster
 # can't pull them. deploy.sh checks this before deploying.
 name: Images
@@ -27,9 +27,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: keyshift-api
+          - image: pitchbend-live-api
             file: infra/docker/api.Dockerfile
-          - image: keyshift-web
+          - image: pitchbend-live-web
             file: infra/docker/web.Dockerfile
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

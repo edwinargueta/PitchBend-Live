@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from keyshift.errors import (
+from pitchbend_live.errors import (
     HTTP_STATUS,
     NON_FATAL,
     ApiError,
@@ -69,7 +69,7 @@ def build_app() -> TestClient:
 
     @app.get("/api/boom")
     async def boom() -> None:
-        raise RuntimeError("secret internals /data/db/keyshift.db")
+        raise RuntimeError("secret internals /data/db/pitchbend-live.db")
 
     @app.post("/api/uploads")
     async def uploads(x: int) -> None:

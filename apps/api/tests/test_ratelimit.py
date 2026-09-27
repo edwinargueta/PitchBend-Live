@@ -2,7 +2,7 @@
 
 The Lua script needs a server that runs Lua. fakeredis only does with the optional
 ``lupa`` package (``fakeredis[lua]``), which isn't a dependency yet; set
-``KEYSHIFT_TEST_REDIS_URL`` to run these against a real Valkey instead. The HTTP-level
+``PITCHBEND_LIVE_TEST_REDIS_URL`` to run these against a real Valkey instead. The HTTP-level
 behavior (429 body, Retry-After, ordering) is covered with a stub limiter in the route
 tests, and the script's arithmetic is mirrored and checked below without a server.
 """
@@ -17,12 +17,12 @@ import fakeredis
 import pytest
 from redis.asyncio import Redis
 
-from keyshift.ratelimit import TOKEN_BUCKET_LUA, RateDecision, TokenBucketLimiter
+from pitchbend_live.ratelimit import TOKEN_BUCKET_LUA, RateDecision, TokenBucketLimiter
 
 pytestmark = pytest.mark.anyio
 
 HAS_LUPA = importlib.util.find_spec("lupa") is not None
-REAL_REDIS_URL = os.environ.get("KEYSHIFT_TEST_REDIS_URL")
+REAL_REDIS_URL = os.environ.get("PITCHBEND_LIVE_TEST_REDIS_URL")
 
 
 @pytest.fixture(params=["fakeredis-lua", "valkey"])
@@ -33,7 +33,7 @@ async def lua_redis(request: pytest.FixtureRequest) -> AsyncIterator[Redis]:
         client: Redis = fakeredis.FakeAsyncRedis()
     else:
         if not REAL_REDIS_URL:
-            pytest.skip("set KEYSHIFT_TEST_REDIS_URL to test the Lua script on Valkey")
+            pytest.skip("set PITCHBEND_LIVE_TEST_REDIS_URL to test the Lua script on Valkey")
         client = Redis.from_url(REAL_REDIS_URL)
     yield client
     await client.aclose()

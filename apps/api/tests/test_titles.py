@@ -1,6 +1,6 @@
 import pytest
 
-from keyshift.titles import FALLBACK_TITLE, MAX_TITLE_LENGTH, sanitize_title
+from pitchbend_live.titles import FALLBACK_TITLE, MAX_TITLE_LENGTH, sanitize_title
 
 
 @pytest.mark.parametrize(

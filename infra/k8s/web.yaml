@@ -7,7 +7,7 @@ metadata:
   name: web
   labels:
     app.kubernetes.io/name: web
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   # Stateless and read-only, so the default RollingUpdate is safe here.
   replicas: 1
@@ -19,7 +19,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: web
-        app.kubernetes.io/part-of: keyshift
+        app.kubernetes.io/part-of: pitchbend-live
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
@@ -33,7 +33,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/edwinargueta/keyshift-web:set-by-deploy-sh
+          image: ghcr.io/edwinargueta/pitchbend-live-web:set-by-deploy-sh
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -71,7 +71,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: keyshift-data
+            claimName: pitchbend-live-data
             readOnly: true
 ---
 apiVersion: v1
@@ -80,7 +80,7 @@ metadata:
   name: web
   labels:
     app.kubernetes.io/name: web
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   type: ClusterIP
   selector:

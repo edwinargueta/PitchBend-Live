@@ -8,7 +8,7 @@ metadata:
   name: api
   labels:
     app.kubernetes.io/name: api
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   # SQLite has ONE writer (CLAUDE.md §5, ARCHITECTURE.md §9 task 5): api and
   # worker both write it. Never scale past 1, and Recreate (not RollingUpdate)
@@ -24,7 +24,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: api
-        app.kubernetes.io/part-of: keyshift
+        app.kubernetes.io/part-of: pitchbend-live
     spec:
       automountServiceAccountToken: false
       # Don't inject <SERVICE>_PORT=tcp://... env vars for every Service in the
@@ -47,7 +47,7 @@ spec:
         #   /data/db    0750: web mounts the whole PVC read-only, so keep it from
         #     reading SQLite at the filesystem level too, not only via nginx.conf.
         - name: init-data-dirs
-          image: ghcr.io/edwinargueta/keyshift-api:set-by-deploy-sh
+          image: ghcr.io/edwinargueta/pitchbend-live-api:set-by-deploy-sh
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -69,7 +69,7 @@ spec:
               mountPath: /data
       containers:
         - name: api
-          image: ghcr.io/edwinargueta/keyshift-api:set-by-deploy-sh
+          image: ghcr.io/edwinargueta/pitchbend-live-api:set-by-deploy-sh
           imagePullPolicy: IfNotPresent
           # No command: the image CMD runs uvicorn with --proxy-headers.
           ports:
@@ -77,9 +77,9 @@ spec:
               containerPort: 8000
           envFrom:
             - configMapRef:
-                name: keyshift-config
+                name: pitchbend-live-config
             - secretRef:
-                name: keyshift-secrets
+                name: pitchbend-live-secrets
           env:
             # Real client IP for rate limiting (CLAUDE.md §5, ARCHITECTURE.md §3.3).
             # uvicorn trusts X-Forwarded-For only from these peers, i.e. the
@@ -127,7 +127,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: keyshift-data
+            claimName: pitchbend-live-data
 ---
 apiVersion: v1
 kind: Service
@@ -135,7 +135,7 @@ metadata:
   name: api
   labels:
     app.kubernetes.io/name: api
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   type: ClusterIP
   selector:

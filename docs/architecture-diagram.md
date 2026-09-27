@@ -1,6 +1,6 @@
-# KeyShift architecture diagrams
+# PitchBend Live architecture diagrams
 
-These diagrams show how KeyShift fits together. `ARCHITECTURE.md` is the source of truth: §4 covers the topology, §6 the contracts, and §9–12 the phases. If a diagram and the document disagree, the document wins; fix the diagram.
+These diagrams show how PitchBend Live fits together. `ARCHITECTURE.md` is the source of truth: §4 covers the topology, §6 the contracts, and §9–12 the phases. If a diagram and the document disagree, the document wins; fix the diagram.
 
 **Legend:** solid boxes exist after **Phase 0** (infrastructure and skeletons). Dashed boxes arrive in **Phase 1+**.
 
@@ -22,11 +22,11 @@ flowchart LR
 
     subgraph vm["Oracle Always-Free A1 VM (arm64): single-node Kubernetes"]
         ingress["Ingress controller<br/>+ cert-manager TLS"]
-        app["keyshift namespace<br/>web, api, worker, valkey"]
+        app["pitchbend-live namespace<br/>web, api, worker, valkey"]
     end
 
     yt[("YouTube")]
-    duck[("DuckDNS<br/>keyshift.duckdns.org")]
+    duck[("DuckDNS<br/>pitchbend-live.duckdns.org")]
     le[("Let's Encrypt")]
     ghcr[("GHCR<br/>public arm64 images")]
     sentry[("Sentry<br/>free tier")]
@@ -48,7 +48,7 @@ flowchart LR
 
 ---
 
-## 2. Runtime topology: `keyshift` namespace
+## 2. Runtime topology: `pitchbend-live` namespace
 
 Every workload runs on the one node. The ReadWriteOnce PVC pins them there on purpose (D7). `api` and `worker` are the only SQLite writers, so each runs as **exactly 1 replica with `strategy: Recreate`**.
 
@@ -56,13 +56,13 @@ Every workload runs on the one node. The ReadWriteOnce PVC pins them there on pu
 flowchart TB
     client(["Browser"])
 
-    subgraph ing["Ingress: host keyshift.duckdns.org, TLS keyshift-tls"]
+    subgraph ing["Ingress: host pitchbend-live.duckdns.org, TLS pitchbend-live-tls"]
         rApi["/api<br/>buffering OFF, 3600 s timeouts"]
         rMedia["/media"]
         rRoot["/"]
     end
 
-    subgraph ns["Namespace keyshift"]
+    subgraph ns["Namespace pitchbend-live"]
         subgraph webPod["Deployment web (nginx-unprivileged :8080)"]
             spa["SPA<br/>try_files to index.html"]
             mediaSrv["/media/ from /data/media/<br/>autoindex off, 24 h cache"]
@@ -78,14 +78,14 @@ flowchart TB
 
         valkey[("Deployment valkey :6379<br/>queue + pub/sub<br/>no persistence")]
 
-        subgraph pvc["PVC keyshift-data: RWO 50Gi, mounted at /data"]
+        subgraph pvc["PVC pitchbend-live-data: RWO 50Gi, mounted at /data"]
             media[("/data/media/uuid4.m4a")]
-            db[("/data/db/keyshift.db<br/>SQLite")]
+            db[("/data/db/pitchbend-live.db<br/>SQLite")]
         end
 
         subgraph cfg["Config, injected with envFrom"]
-            cm[/"ConfigMap keyshift-config<br/>§6.2 non-secret keys"/]
-            sec[/"Secret keyshift-secrets<br/>DUCKDNS_TOKEN, SENTRY_DSN<br/>created by hand, never in git"/]
+            cm[/"ConfigMap pitchbend-live-config<br/>§6.2 non-secret keys"/]
+            sec[/"Secret pitchbend-live-secrets<br/>DUCKDNS_TOKEN, SENTRY_DSN<br/>created by hand, never in git"/]
         end
 
         kuma["Deployment uptime-kuma :3001<br/>own 1Gi PVC, no Ingress"]
@@ -114,9 +114,9 @@ flowchart TB
 
 ---
 
-## 2b. Shared cluster: KeyShift and the Sudoku Solver
+## 2b. Shared cluster: PitchBend Live and the Sudoku Solver
 
-The 1 OCPU / 6 GB VM also runs the Sudoku Solver. Traefik routes by hostname, and cert-manager and the ClusterIssuer (installed by the Sudoku repo) serve both apps. KeyShift owns only its namespace (§3.7, ADR 0003). The requests below add up to ~630m of the node's 1000m CPU, and at least 250m must stay free for Sudoku's rolling updates.
+The 1 OCPU / 6 GB VM also runs the Sudoku Solver. Traefik routes by hostname, and cert-manager and the ClusterIssuer (installed by the Sudoku repo) serve both apps. PitchBend Live owns only its namespace (§3.7, ADR 0003). The requests below add up to ~630m of the node's 1000m CPU, and at least 250m must stay free for Sudoku's rolling updates.
 
 ```mermaid
 flowchart TB
@@ -138,7 +138,7 @@ flowchart TB
             sweb["web ×2<br/>25m / 32Mi each"]
         end
 
-        subgraph ks["keyshift (this repo)"]
+        subgraph ks["pitchbend-live (this repo)"]
             kweb["web 10m"]
             kapi["api 50m"]
             kworker["worker 100m<br/>concurrency 1"]
@@ -149,11 +149,11 @@ flowchart TB
     net --> traefik
     traefik -- "Host: sudoku-csp.duckdns.org" --> sweb
     traefik -- "Host: sudoku-csp.duckdns.org /api" --> sapi
-    traefik -- "Host: keyshift.duckdns.org" --> kweb
-    traefik -- "Host: keyshift.duckdns.org /api" --> kapi
+    traefik -- "Host: pitchbend-live.duckdns.org" --> kweb
+    traefik -- "Host: pitchbend-live.duckdns.org /api" --> kapi
     cm --> issuer
     issuer -. "sudoku-tls" .-> sudoku
-    issuer -. "keyshift-tls" .-> ks
+    issuer -. "pitchbend-live-tls" .-> ks
 ```
 
 ---
@@ -264,7 +264,7 @@ flowchart LR
         lworker["worker (dev target)<br/>arq --watch"]
         lvalkey[("valkey")]
         lmedia["media<br/>nginx + real nginx.conf"]
-        lvol[("named volume<br/>keyshift-data at /data")]
+        lvol[("named volume<br/>pitchbend-live-data at /data")]
         vite -- "/api proxy" --> lapi
         vite -- "/media proxy" --> lmedia
         lapi --> lvalkey
@@ -279,7 +279,7 @@ flowchart LR
         papi["api (prod target)"]
         pworker["worker (prod target)"]
         pvalkey[("valkey")]
-        ppvc[("PVC keyshift-data")]
+        ppvc[("PVC pitchbend-live-data")]
         pweb --- ppvc
         papi --- ppvc
         pworker --- ppvc
@@ -302,7 +302,7 @@ Either way, `make check` runs lint and tests in the `dev` images, the same ones 
 
 ## 7. Build and deploy pipeline
 
-Deployment is **manual only**. CI never holds cluster credentials (§7). The `keyshift` namespace is the only environment; there is no staging.
+Deployment is **manual only**. CI never holds cluster credentials (§7). The `pitchbend-live` namespace is the only environment; there is no staging.
 
 ```mermaid
 flowchart LR
@@ -310,9 +310,9 @@ flowchart LR
     pr --> ci["CI workflow (pull_request)<br/>build dev images, ruff, mypy, pytest,<br/>eslint, tsc, vitest, render manifests"]
     ci -- "green" --> main["merge to main"]
     main --> images["Images workflow<br/>linux/arm64 prod targets<br/>packages: write only here"]
-    images --> ghcr[("GHCR<br/>keyshift-api:SHA<br/>keyshift-web:SHA<br/>public")]
+    images --> ghcr[("GHCR<br/>pitchbend-live-api:SHA<br/>pitchbend-live-web:SHA<br/>public")]
     main -.-> human(["You: infra/scripts/deploy.sh SHA"])
-    human -- "checks images are public,<br/>Secret exists, then kubectl apply -k<br/>(temp overlay pins the SHA)" --> cluster["Oracle VM cluster<br/>namespace keyshift"]
+    human -- "checks images are public,<br/>Secret exists, then kubectl apply -k<br/>(temp overlay pins the SHA)" --> cluster["Oracle VM cluster<br/>namespace pitchbend-live"]
     ghcr -- "image pull" --> cluster
 ```
 
@@ -324,6 +324,6 @@ flowchart LR
 |---|---|---|
 | `apps/api/` + `infra/docker/api.Dockerfile` | Compose (`dev`) · CI Images (`prod`) | `api` and `worker` (uid 10001) |
 | `apps/web/` + `infra/docker/web.Dockerfile` + `nginx.conf` | Compose (`dev`) · CI Images (`prod`) | `web` (uid 101) |
-| `infra/k8s/` (Kustomize) | `infra/scripts/deploy.sh <sha>` (manual) | Everything in namespace `keyshift` |
+| `infra/k8s/` (Kustomize) | `infra/scripts/deploy.sh <sha>` (manual) | Everything in namespace `pitchbend-live` |
 | `infra/docker-compose.dev.yml` | `docker compose` on your machine | Local only |
 | `.github/workflows/` | GitHub Actions (arm64 runners) | CI checks, GHCR pushes |

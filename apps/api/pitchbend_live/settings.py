@@ -1,7 +1,7 @@
 """Runtime configuration.
 
 Every key and default below is the contract in ARCHITECTURE.md §6.2. In production the
-values come from the ConfigMap ``keyshift-config`` and the Secret ``keyshift-secrets``
+values come from the ConfigMap ``pitchbend_live-config`` and the Secret ``pitchbend_live-secrets``
 (injected with ``envFrom``); locally from ``apps/api/.env`` via Docker Compose ``env_file``.
 Only environment variables are read; this module never opens a ``.env`` file itself.
 """
@@ -15,11 +15,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(case_sensitive=True, frozen=True)
 
-    # ConfigMap keyshift-config (§6.2)
-    PUBLIC_HOST: str = "keyshift.duckdns.org"
-    DUCKDNS_SUBDOMAIN: str = "keyshift"
+    # ConfigMap pitchbend_live-config (§6.2)
+    PUBLIC_HOST: str = "pitchbend-live.duckdns.org"
+    DUCKDNS_SUBDOMAIN: str = "pitchbend_live"
     REDIS_URL: str = "redis://valkey:6379/0"
-    DB_PATH: str = "/data/db/keyshift.db"
+    DB_PATH: str = "/data/db/pitchbend-live.db"
     MEDIA_DIR: str = "/data/media"
     MEDIA_BASE_URL: str = "/media"
     MAX_DURATION_S: int = 720
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     WORKER_CONCURRENCY: int = 1  # 1 OCPU VM shared with Sudoku (ADR 0003)
     TMP_DIR: str = "/data/tmp"  # upload/download staging on the shared PVC (ADR 0005 §10)
 
-    # Secret keyshift-secrets (§6.2). SecretStr keeps values out of repr() and logs.
+    # Secret pitchbend_live-secrets (§6.2). SecretStr keeps values out of repr() and logs.
     DUCKDNS_TOKEN: SecretStr = SecretStr("")
     SENTRY_DSN: SecretStr = SecretStr("")
 

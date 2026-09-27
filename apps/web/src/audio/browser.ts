@@ -121,7 +121,7 @@ export function createOfflineContext(
   return new Ctor(channels, length, sampleRate);
 }
 
-/** KeyShift's playback format (D8): AAC-LC in an MP4 (.m4a) container. */
+/** PitchBend Live's playback format (D8): AAC-LC in an MP4 (.m4a) container. */
 export const AAC_MIME = 'audio/mp4; codecs="mp4a.40.2"';
 
 /**
@@ -160,7 +160,7 @@ export function decodeError(
   if (aacSupported(g) === false) {
     return new EngineError(
       "decode",
-      `This browser can't decode AAC audio (${AAC_MIME}), the format KeyShift plays. Browsers built without proprietary codecs, such as embedded ones, lack it.`,
+      `This browser can't decode AAC audio (${AAC_MIME}), the format PitchBend Live plays. Browsers built without proprietary codecs, such as embedded ones, lack it.`,
       { cause, hint: "no-aac" },
     );
   }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# infra/scripts/check-cluster.sh: read-only pre-flight checks for the KeyShift
+# infra/scripts/check-cluster.sh: read-only pre-flight checks for the PitchBend Live
 # cluster (ARCHITECTURE.md §9 task 1). Run it before the first deploy, after
 # rebuilding the cluster, and whenever a deploy misbehaves.
 #
@@ -16,12 +16,12 @@
 # Usage:  infra/scripts/check-cluster.sh
 # Exit:   0 if no check FAILs (WARN lines are advisory), 1 otherwise.
 # Needs:  bash 3.2+ (the macOS default works), kubectl, awk. Docker (or
-#         mikefarah yq v4 on PATH) for KeyShift's exact requests in the capacity
+#         mikefarah yq v4 on PATH) for PitchBend Live's exact requests in the capacity
 #         check; without it, the ADR 0003 budget ceilings are used instead.
 set -euo pipefail
 
-readonly NAMESPACE=keyshift
-readonly SECRET=keyshift-secrets
+readonly NAMESPACE=pitchbend-live
+readonly SECRET=pitchbend-live-secrets
 readonly CLUSTER_ISSUER=letsencrypt-prod
 readonly INGRESS_CLASS=traefik # shared k3s Traefik; ingress.yaml sets it explicitly
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,7 +34,7 @@ readonly YQ_IMAGE="mikefarah/yq:4.53.6" # same pin as validate-manifests.sh (MIT
 # Capacity thresholds (ADR 0003, ARCHITECTURE.md §3.6).
 readonly MIN_CPU_HEADROOM_M=250 # Sudoku's api RollingUpdate surges 200m; keep room for it
 readonly MIN_MEMORY_HEADROOM_MI=512
-# ADR 0003 ceilings on KeyShift's own totals (CI enforces them in
+# ADR 0003 ceilings on PitchBend Live's own totals (CI enforces them in
 # validate-manifests.sh). Used only if the render can't be measured.
 readonly BUDGET_CPU_REQUESTS_M=200 BUDGET_MEMORY_REQUESTS_MI=640 BUDGET_MEMORY_LIMITS_MI=3072
 
@@ -164,7 +164,7 @@ readonly CONTAINER_ROWS='select(.kind == "Deployment" or .kind == "StatefulSet" 
 # Sets ks_rows (CONTAINER_ROWS lines for the rendered infra/k8s) and ks_how.
 # `kubectl kustomize` renders locally and never contacts the cluster; yq runs in
 # a throwaway container that gets the render on stdin and nothing else.
-measure_keyshift() {
+measure_pitchbend_live() {
   local rendered
   ks_rows="" ks_how=""
   if ! rendered=$(kubectl kustomize "$K8S_DIR" 2>&1); then
@@ -190,7 +190,7 @@ measure_keyshift() {
 # container, and "overhead.cpu,overhead.memory". Unset values are empty.
 readonly POD_RES_FMT='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.status.phase}{"\t"}{range .spec.containers[*]}{.resources.requests.cpu}{","}{.resources.requests.memory}{","}{.resources.limits.memory}{";"}{end}{"\t"}{range .spec.initContainers[*]}{.resources.requests.cpu}{","}{.resources.requests.memory}{","}{.resources.limits.memory}{","}{.restartPolicy}{";"}{end}{"\t"}{.spec.overhead.cpu}{","}{.spec.overhead.memory}{"\n"}{end}'
 
-echo "KeyShift cluster pre-flight (read-only; nothing is changed)"
+echo "PitchBend Live cluster pre-flight (read-only; nothing is changed)"
 
 # -----------------------------------------------------------------------------
 section "1. Cluster access"
@@ -240,7 +240,7 @@ else
     pass "All $n_nodes node(s) are arm64"
   fi
   if ((n_nodes > 1)); then
-    warn "$n_nodes nodes: the ReadWriteOnce PVC ties every KeyShift pod to one node (CLAUDE.md §5)"
+    warn "$n_nodes nodes: the ReadWriteOnce PVC ties every PitchBend Live pod to one node (CLAUDE.md §5)"
     hint "Don't add nodes without first moving to ReadWriteMany storage."
   fi
 fi
@@ -276,7 +276,7 @@ fi
 # -----------------------------------------------------------------------------
 section "4. Shared Traefik configuration"
 # Traefik serves every app on this cluster, the Sudoku Solver included (ADR 0003).
-# KeyShift's only sanctioned change to it is $TRAEFIK_BOOTSTRAP, applied by hand.
+# PitchBend Live's only sanctioned change to it is $TRAEFIK_BOOTSTRAP, applied by hand.
 traefik_needs_bootstrap=0
 
 if hcc=$(k -n kube-system get helmchartconfig traefik -o name 2>&1); then
@@ -368,7 +368,7 @@ else
   if cut -f1 <<<"$classes" | grep -qxF -- "$INGRESS_CLASS"; then
     pass "IngressClass $INGRESS_CLASS exists (infra/k8s/ingress.yaml sets ingressClassName: $INGRESS_CLASS)"
   else
-    fail "IngressClass $INGRESS_CLASS not found, so the KeyShift Ingress would be ignored"
+    fail "IngressClass $INGRESS_CLASS not found, so the PitchBend Live Ingress would be ignored"
     hint "k3s creates it with its bundled Traefik (unless the server runs with --disable traefik)."
     hint "Traefik is shared with the Sudoku Solver: fix the cluster, not ingress.yaml."
   fi
@@ -438,7 +438,7 @@ else
   done <<<"$scs"
   n_sc_defaults=$(wc -w <<<"$sc_defaults" | tr -d ' ')
   if ((n_sc_defaults == 0)); then
-    fail "No default StorageClass, so the keyshift-data and uptime-kuma-data PVCs would stay Pending"
+    fail "No default StorageClass, so the pitchbend-live-data and uptime-kuma-data PVCs would stay Pending"
     hint "Mark one as default: storageclass.kubernetes.io/is-default-class=true"
   elif ((n_sc_defaults == 1)); then
     pass "Default StorageClass:$sc_defaults"
@@ -532,7 +532,7 @@ fi
 # -----------------------------------------------------------------------------
 section "10. Node capacity (shared with other apps, ADR 0003)"
 # The scheduler places pods by their requests, so everything must fit in the
-# node's allocatable CPU and memory. KeyShift is counted from the rendered
+# node's allocatable CPU and memory. PitchBend Live is counted from the rendered
 # infra/k8s rather than its live pods, so the result is the same before and
 # after a deploy; live pods in namespace $NAMESPACE are skipped.
 cap_ok=1 alloc_cpu=0 alloc_mem=0 n_alloc=0
@@ -555,7 +555,7 @@ while IFS=$'\t' read -r name cpu mem raw_cpu raw_mem; do
   alloc_cpu=$((alloc_cpu + cpu)) alloc_mem=$((alloc_mem + mem)) n_alloc=$((n_alloc + 1))
 done <<<"$alloc_rows"
 if ((n_alloc > 1)); then
-  info "($n_alloc nodes: capacity is summed, but every KeyShift pod lands on the node holding its RWO PVC)"
+  info "($n_alloc nodes: capacity is summed, but every PitchBend Live pod lands on the node holding its RWO PVC)"
 fi
 
 # Requests of every other pod, per namespace. A pod's effective request is
@@ -633,9 +633,9 @@ while IFS=$'\t' read -r tag ns npods cpu mem lim unl; do
   esac
 done <<<"$others"
 
-# KeyShift's long-running containers (x replicas; init containers and the
+# PitchBend Live's long-running containers (x replicas; init containers and the
 # duckdns CronJob are transient), exactly as validate-manifests.sh counts them.
-if measure_keyshift; then
+if measure_pitchbend_live; then
   ks=$(awk -F'\t' "$AWK_QUANTITY"'
     NF == 0 { next }
     $3 == "main" && $1 != "Job" && $1 != "CronJob" {
@@ -660,8 +660,8 @@ else
   ks_cpu=$BUDGET_CPU_REQUESTS_M
   ks_mem=$((BUDGET_MEMORY_REQUESTS_MI * 1048576)) ks_lim=$((BUDGET_MEMORY_LIMITS_MI * 1048576))
   cap_row "$NAMESPACE (budget)" "ADR 0003" "$ks_cpu" "$ks_mem" "$ks_lim"
-  warn "Could not measure KeyShift's requests from the render: $ks_how"
-  hint "Counted KeyShift at its ADR 0003 ceilings instead (an upper bound; CI enforces them)."
+  warn "Could not measure PitchBend Live's requests from the render: $ks_how"
+  hint "Counted PitchBend Live at its ADR 0003 ceilings instead (an upper bound; CI enforces them)."
 fi
 
 if ((cap_ok && n_alloc > 0)); then
@@ -676,7 +676,7 @@ if ((cap_ok && n_alloc > 0)); then
     fail "Requests exceed the node's allocatable$over: pods would stay Pending"
     hint "Shrink requests or resize the VM (free up to 4 OCPU / 24 GB); both need an ADR (ARCHITECTURE.md §3.6)."
   else
-    pass "Other namespaces' requests plus KeyShift's fit in the node's allocatable CPU and memory"
+    pass "Other namespaces' requests plus PitchBend Live's fit in the node's allocatable CPU and memory"
   fi
   if ((head_cpu >= 0 && head_cpu < MIN_CPU_HEADROOM_M)); then
     warn "CPU headroom ${head_cpu}m is below ${MIN_CPU_HEADROOM_M}m"
@@ -687,16 +687,16 @@ if ((cap_ok && n_alloc > 0)); then
     hint "Rollout surges, cert-manager's HTTP-01 solver pods and CronJobs need room to schedule."
   fi
   if ((used_lim > alloc_mem)); then
-    warn "Memory limits of all pods plus KeyShift ($(fmt_mi "$used_lim")) exceed allocatable memory ($(fmt_mi "$alloc_mem"))"
+    warn "Memory limits of all pods plus PitchBend Live ($(fmt_mi "$used_lim")) exceed allocatable memory ($(fmt_mi "$alloc_mem"))"
     hint "Informational: fine while pods stay near their requests, but if several burst at once"
     hint "the node runs out of memory and the kernel OOM-kills containers."
   else
-    info "Memory limits of all pods plus KeyShift: $(fmt_mi "$used_lim") of $(fmt_mi "$alloc_mem") allocatable"
+    info "Memory limits of all pods plus PitchBend Live: $(fmt_mi "$used_lim") of $(fmt_mi "$alloc_mem") allocatable"
   fi
 fi
 
 # Other apps on this node: anything that isn't Kubernetes/k3s, cert-manager or
-# KeyShift (and "default" only if it has pods).
+# PitchBend Live (and "default" only if it has pods).
 if all_ns=$(k get namespaces -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null); then
   apps=""
   while IFS= read -r ns; do

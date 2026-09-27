@@ -13,8 +13,8 @@ import shutil
 import uuid
 from pathlib import Path
 
-from keyshift.db.migrate import apply_migrations
-from keyshift.settings import Settings
+from pitchbend_live.db.migrate import apply_migrations
+from pitchbend_live.settings import Settings
 
 MEDIA_FILE_MODE = 0o644  # nginx (another uid, read-only mount) must be able to read it
 CACHE_DIR_NAME = ".cache"

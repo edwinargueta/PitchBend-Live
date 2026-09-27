@@ -8,11 +8,11 @@ from collections.abc import AsyncIterator
 import fakeredis
 import pytest
 
-from keyshift import events
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.db.connection import connect
-from keyshift.settings import Settings
+from pitchbend_live import events
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.db.connection import connect
+from pitchbend_live.settings import Settings
 from tests.test_db import create, make_ready
 
 pytestmark = pytest.mark.anyio

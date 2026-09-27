@@ -1,6 +1,6 @@
 # Shared audio + SQLite volume (ARCHITECTURE.md §3.2, D7):
 #   /data/media/<uuid4>.m4a   playback audio (24 h TTL, deleted by the worker's cleanup cron)
-#   /data/db/keyshift.db      SQLite
+#   /data/db/pitchbend-live.db      SQLite
 # api and worker mount it read-write; web mounts it read-only to serve /media.
 #
 # ReadWriteOnce ties every pod that mounts it to this one node, on purpose
@@ -12,10 +12,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: keyshift-data
+  name: pitchbend-live-data
   labels:
-    app.kubernetes.io/name: keyshift-data
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/name: pitchbend-live-data
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   accessModes:
     - ReadWriteOnce

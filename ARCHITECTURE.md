@@ -1,4 +1,4 @@
-# KeyShift — Architecture & Phased Build Plan
+# PitchBend Live — Architecture & Phased Build Plan
 
 > **Audience:** human developers and AI coding subagents.
 > **Status:** Living document. Phase 0 and Phase 1 are built and verified locally (Compose, Playwright end to end, the production image). Neither is deployed yet. Later phases are scoped but may be revised.
@@ -9,7 +9,7 @@
 
 ## 1. Product summary
 
-KeyShift is a web app where a musician or singer pastes a YouTube URL (or uploads an audio file), hears the song immediately, and transposes it up or down by semitones **without changing tempo**. The app detects the original key, shows the new key live as the user moves a dial, and lets them download the transposed audio.
+PitchBend Live is a web app where a musician or singer pastes a YouTube URL (or uploads an audio file), hears the song immediately, and transposes it up or down by semitones **without changing tempo**. The app detects the original key, shows the new key live as the user moves a dial, and lets them download the transposed audio.
 
 **North-star UX goals**
 1. Moving the key dial is heard in **< 100 ms** with no playback restart.
@@ -101,39 +101,39 @@ KeyShift is a web app where a musician or singer pastes a YouTube URL (or upload
 
 ### 3.6 VM resource budget (1 OCPU / 6 GB, shared with the Sudoku Solver)
 
-The VM is a `VM.Standard.A1.Flex` with **1 OCPU and 6 GB**. It's shared with the Sudoku Solver app (namespace `sudoku-prod`; see 3.7), so KeyShift runs on a small slice. This was an explicit choice over resizing to the free 4 OCPU / 24 GB ([ADR 0003](docs/adr/0003-shared-cluster-with-sudoku-solver.md)). The requests below are **scheduling reservations**, sized from measured idle usage. Limits let a busy pod burst into the idle CPU.
+The VM is a `VM.Standard.A1.Flex` with **1 OCPU and 6 GB**. It's shared with the Sudoku Solver app (namespace `sudoku-prod`; see 3.7), so PitchBend Live runs on a small slice. This was an explicit choice over resizing to the free 4 OCPU / 24 GB ([ADR 0003](docs/adr/0003-shared-cluster-with-sudoku-solver.md)). The requests below are **scheduling reservations**, sized from measured idle usage. Limits let a busy pod burst into the idle CPU.
 
 | Workload | CPU request / limit | Memory request / limit |
 |---|---|---|
 | k3s system: coredns, metrics-server, Traefik, local-path (not ours) | ~200m | ~140Mi requested (~1 GB actual, incl. the k3s server) |
 | cert-manager (shared, not ours) | — | ~150 MB actual |
 | Sudoku Solver: api ×1, web ×2 (not ours) | 250m / 1.4 | 320Mi / 896Mi |
-| **KeyShift** web (nginx-unprivileged) | 10m / 200m | 16Mi / 64Mi |
-| **KeyShift** api (FastAPI/uvicorn) | 50m / 500m | 96Mi / 384Mi |
-| **KeyShift** worker (ARQ, concurrency **1**) | 100m / 1 | 256Mi / 2Gi |
-| **KeyShift** valkey (`--maxmemory 64mb`) | 10m / 200m | 32Mi / 128Mi |
-| **KeyShift** uptime-kuma | 10m / 250m | 160Mi / 320Mi |
-| **KeyShift** duckdns CronJob (transient) | 10m / 50m | 16Mi / 32Mi |
-| **KeyShift total** (long-running) | **180m** | **560Mi / ~2.9Gi** |
+| **PitchBend Live** web (nginx-unprivileged) | 10m / 200m | 16Mi / 64Mi |
+| **PitchBend Live** api (FastAPI/uvicorn) | 50m / 500m | 96Mi / 384Mi |
+| **PitchBend Live** worker (ARQ, concurrency **1**) | 100m / 1 | 256Mi / 2Gi |
+| **PitchBend Live** valkey (`--maxmemory 64mb`) | 10m / 200m | 32Mi / 128Mi |
+| **PitchBend Live** uptime-kuma | 10m / 250m | 160Mi / 320Mi |
+| **PitchBend Live** duckdns CronJob (transient) | 10m / 50m | 16Mi / 32Mi |
+| **PitchBend Live total** (long-running) | **180m** | **560Mi / ~2.9Gi** |
 | **Headroom** after everything | **~370m** (≥ 250m must stay free) | ~4.5 GiB of requests, ~1 GiB against limits |
 
-- **KeyShift must fit in 200m CPU and 640Mi of memory requests.** No single memory limit may exceed 2Gi, and the total of limits must stay at or below 3Gi. `infra/scripts/validate-manifests.sh` enforces these ceilings in CI, and raising them needs an ADR.
+- **PitchBend Live must fit in 200m CPU and 640Mi of memory requests.** No single memory limit may exceed 2Gi, and the total of limits must stay at or below 3Gi. `infra/scripts/validate-manifests.sh` enforces these ceilings in CI, and raising them needs an ADR.
 - **Keep ≥ 250m CPU unrequested.** Sudoku's api uses a RollingUpdate that needs 200m of surge room, or its rollouts hang Pending. `check-cluster.sh` checks the live headroom.
-- **Tradeoff:** one core is shared by everything. A Sudoku solve and a KeyShift ingest compete for the same core, so cache-miss processing and key detection are slower than on a dedicated VM. Phase 2 server exports and Phase 3 Demucs are at risk (see §11, §12). The design still allows resizing the VM to 4 OCPU / 24 GB for free later. That would be an ADR plus a restore of the larger budget, with no code change.
+- **Tradeoff:** one core is shared by everything. A Sudoku solve and a PitchBend Live ingest compete for the same core, so cache-miss processing and key detection are slower than on a dedicated VM. Phase 2 server exports and Phase 3 Demucs are at risk (see §11, §12). The design still allows resizing the VM to 4 OCPU / 24 GB for free later. That would be an ADR plus a restore of the larger budget, with no code change.
 
 ### 3.7 Shared cluster: Sudoku Solver
 
 The same single-node k3s cluster also runs the **Sudoku Solver** app (repo `edwinargueta/Sudoku-Solver-Google-OR-tools`, host `sudoku-csp.duckdns.org`, namespace `sudoku-prod`).
 
-| Component | Owner | KeyShift's relationship |
+| Component | Owner | PitchBend Live's relationship |
 |---|---|---|
 | k3s (default install: Traefik, ServiceLB, local-path, pod CIDR `10.42.0.0/16`) | Cluster | Uses it. Never reinstall or upgrade k3s from this repo. |
-| Traefik (`kube-system`) | Cluster, shared | KeyShift's Ingress sets `ingressClassName: traefik`. The one-time `infra/k8s-bootstrap/traefik-config.yaml` (externalTrafficPolicy Local, 300 s readTimeout) changes it for **both** apps (ADR 0003). |
-| cert-manager + ClusterIssuer `letsencrypt-prod` | Sudoku repo (`deploy/k8s/bootstrap`) | KeyShift references the issuer. Never install a second cert-manager or edit the issuer from this repo. |
+| Traefik (`kube-system`) | Cluster, shared | PitchBend Live's Ingress sets `ingressClassName: traefik`. The one-time `infra/k8s-bootstrap/traefik-config.yaml` (externalTrafficPolicy Local, 300 s readTimeout) changes it for **both** apps (ADR 0003). |
+| cert-manager + ClusterIssuer `letsencrypt-prod` | Sudoku repo (`deploy/k8s/bootstrap`) | PitchBend Live references the issuer. Never install a second cert-manager or edit the issuer from this repo. |
 | Namespace `sudoku-prod` | Sudoku repo | Never touch it. |
 | Node CPU/memory | Shared | See the budget in 3.6. |
 
-Hostnames, namespaces, TLS Secrets, Service names, and GHCR packages don't collide: every KeyShift object lives in `keyshift`. Let's Encrypt limits are per subdomain, because `duckdns.org` is on the Public Suffix List. The cluster API isn't exposed publicly: `kubectl` reaches it through an SSH tunnel to the VM, as in the Sudoku setup.
+Hostnames, namespaces, TLS Secrets, Service names, and GHCR packages don't collide: every PitchBend Live object lives in `pitchbend-live`. Let's Encrypt limits are per subdomain, because `duckdns.org` is on the Public Suffix List. The cluster API isn't exposed publicly: `kubectl` reaches it through an SSH tunnel to the VM, as in the Sudoku setup.
 
 ---
 
@@ -146,19 +146,19 @@ Hostnames, namespaces, TLS Secrets, Service names, and GHCR packages don't colli
  └─ Offline render: OfflineAudioContext + same engine → WAV download
             │  HTTPS (same origin)
             ▼
- Ingress controller (existing) + cert-manager TLS, host keyshift.duckdns.org
+ Ingress controller (existing) + cert-manager TLS, host pitchbend-live.duckdns.org
  ├─ /api    → Service api:8000   (FastAPI; response buffering OFF for SSE)
  ├─ /media  → Service web:8080   (nginx serves /data/media from the PVC, cache headers)
  └─ /       → Service web:8080   (nginx serves the SPA, fallback to index.html)
 
- Namespace: keyshift
+ Namespace: pitchbend-live
  ├─ Deployment api ──enqueue──▶ Deployment valkey ──▶ Deployment worker
  │                                                    ├─ yt-dlp (audio-only) / upload normalize (ffmpeg)
  │                                                    ├─ write /data/media/<uuid>.m4a
  │                                                    └─ key detection (librosa)
- ├─ PVC keyshift-data (RWO) mounted at /data by api, worker, web (read-only)
+ ├─ PVC pitchbend-live-data (RWO) mounted at /data by api, worker, web (read-only)
  │   ├─ /data/media/*.m4a
- │   └─ /data/db/keyshift.db   (SQLite: tracks, jobs, exports)
+ │   └─ /data/db/pitchbend-live.db   (SQLite: tracks, jobs, exports)
  ├─ Deployment uptime-kuma (own PVC, no Ingress; kubectl port-forward)
  └─ CronJob duckdns (updates DNS every 5 min)
  Cleanup cron (inside worker, ARQ): delete media + rows older than 24 h
@@ -192,10 +192,11 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
 | D16 | The worker reuses the api image with a different command | One Python image to build and version | Worker image carries API code it doesn't need (small) |
 | D17 | Local development runs entirely in Docker Compose (`infra/docker-compose.dev.yml`), building images locally from the same Dockerfiles as production; the host needs only Docker. Kubernetes manifests are production-only ([ADR 0001](docs/adr/0001-containerized-local-development.md)) | No Python/Node toolchain drift between machines; fastest inner loop; one set of Dockerfiles | Slower first build; bind-mount file watching is slower on macOS; editors need container-aware setup for import resolution; dev and prod topologies differ slightly (the Phase 0 acceptance tests catch drift) |
 | D18 | Phase 0 implementation choices: repo-root build context with Dockerfile-specific allowlist ignores, `GIT_SHA` build metadata, Node 24 LTS, a temp Kustomize overlay in `deploy.sh`, dual Traefik/ingress-nginx Ingress, and a `media` nginx service in Compose ([ADR 0002](docs/adr/0002-phase-0-implementation-choices.md)) | Fills gaps in §9 without changing any §6 contract | See ADR 0002 (operator must make GHCR packages public and set the pod CIDR) |
-| D19 | Share the 1 OCPU / 6 GB VM with the Sudoku Solver instead of resizing: KeyShift shrinks to 180m / 560Mi of requests, `WORKER_CONCURRENCY=1`, and shares Traefik, cert-manager and `letsencrypt-prod` ([ADR 0003](docs/adr/0003-shared-cluster-with-sudoku-solver.md)) | Uses the existing VM as-is; no resize or reboot; stays $0 | Slower processing on one shared core; Phase 2 export target at risk; Phase 3 Demucs blocked until a (free) resize |
+| D19 | Share the 1 OCPU / 6 GB VM with the Sudoku Solver instead of resizing: PitchBend Live shrinks to 180m / 560Mi of requests, `WORKER_CONCURRENCY=1`, and shares Traefik, cert-manager and `letsencrypt-prod` ([ADR 0003](docs/adr/0003-shared-cluster-with-sudoku-solver.md)) | Uses the existing VM as-is; no resize or reboot; stays $0 | Slower processing on one shared core; Phase 2 export target at risk; Phase 3 Demucs blocked until a (free) resize |
 | D20 | `make dev` runs the API, worker and Vite natively on the host (like the Sudoku repo), with Valkey and the `/media` nginx in Docker; `make up` stays fully containerized; checks always run in containers ([ADR 0004](docs/adr/0004-host-native-make-dev.md), amends ADR 0001) | Fast native reloads and real editor import resolution; Sudoku-repo muscle memory | Two local modes to keep working; host needs uv + Node 24 for `make dev`; `make check` keeps CI parity |
 | D21 | Phase 1 contract clarifications: `NOT_FOUND` 404, `retry_after_s` in the error body, dedup joins in-flight jobs, SSE replay from `job_state`, `TMP_DIR` staging, sharps-only key names from the API ([ADR 0005](docs/adr/0005-phase-1-contract-clarifications.md)) | Settles every cross-boundary gap once, before parallel workstreams build against §6 | One new config key and one new error code |
 | D22 | Phase 1 implementation notes: dedup and replay refinements, MiB upload unit, a shared YouTube URL table, harmonic separation off, `NUMBA_CACHE_DIR`, Signalsmith Blob-URL worklet (CSP note), Dependabot for yt-dlp, host ffmpeg for `make dev`, typed engine errors with cause-specific copy (embedded browsers such as VS Code's lack the AAC decoder; use Chrome, Firefox or Safari) ([ADR 0006](docs/adr/0006-phase-1-implementation-notes.md)) | Records what integration found, so nothing changes silently | Engine memory ~2x the decoded track; Firefox realtime specs skip in CI |
+| D23 | Rename KeyShift to **PitchBend Live**: host `pitchbend-live.duckdns.org`, namespace/images/Secret `pitchbend-live*`, Python package `pitchbend_live`, DB `/data/db/pitchbend-live.db` ([ADR 0007](docs/adr/0007-rename-to-pitchbend-live.md)) | Matches the repo name and the new DNS entry; done before any commit or deploy, so nothing migrates | None beyond renamed operator commands |
 
 ---
 
@@ -220,7 +221,7 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
 │  │  ├─ public/worklets/  # unused: Signalsmith inlines its WASM and worklet (ADR 0006)
 │  │  └─ e2e/              # Playwright: engine/ (real Web Audio) and happy-path.spec.ts; fixtures/
 │  └─ api/                 # FastAPI + ARQ worker (one Python package)
-│     ├─ keyshift/
+│     ├─ pitchbend_live/
 │     │  ├─ main.py        # FastAPI app
 │     │  ├─ routes/        # jobs.py, tracks.py, uploads.py, health.py
 │     │  ├─ worker/        # arq settings, tasks: fetch_youtube, ingest_upload, detect_key, cleanup
@@ -247,16 +248,16 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
    └─ scripts/             # check-cluster.sh, deploy.sh, validate-manifests.sh
 ```
 
-### 6.2 Configuration (ConfigMap `keyshift-config` + Secret `keyshift-secrets`)
+### 6.2 Configuration (ConfigMap `pitchbend-live-config` + Secret `pitchbend-live-secrets`)
 
 Non-secret values go in the ConfigMap; `DUCKDNS_TOKEN` and `SENTRY_DSN` go in the Secret. Both are injected with `envFrom`. For local development, the same keys live in `apps/api/.env` (git-ignored).
 
 ```
 # ConfigMap
-PUBLIC_HOST=keyshift.duckdns.org
-DUCKDNS_SUBDOMAIN=keyshift
+PUBLIC_HOST=pitchbend-live.duckdns.org
+DUCKDNS_SUBDOMAIN=pitchbend-live
 REDIS_URL=redis://valkey:6379/0
-DB_PATH=/data/db/keyshift.db
+DB_PATH=/data/db/pitchbend-live.db
 MEDIA_DIR=/data/media
 MEDIA_BASE_URL=/media
 MAX_DURATION_S=720
@@ -414,7 +415,7 @@ Music-theory utilities (`src/lib/music.ts`) must provide: `transposeKey(tonic, m
   - **Checks always run in containers.** Lint, type-check, tests, and manifest validation run via `make check` in the Docker `dev` images, exactly as CI does.
   - **One set of Dockerfiles.** Each has a `dev` target (dev dependencies, hot reload, source bind-mounted) used by Compose, and a final production target that CI builds and Kubernetes runs.
   - **Local images never ship.** Locally built images are never pushed or deployed. pip is never used.
-- **Python:** 3.12, `uv` for deps (inside the api image only; `uv.lock` committed and installed with `uv sync --frozen`), `ruff` (lint + format), `pytest`, type hints everywhere, `mypy --strict` on `keyshift/`.
+- **Python:** 3.12, `uv` for deps (inside the api image only; `uv.lock` committed and installed with `uv sync --frozen`), `ruff` (lint + format), `pytest`, type hints everywhere, `mypy --strict` on `pitchbend_live/`.
 - **TypeScript:** Node 24 LTS (Node 20 reached end-of-life in April 2026), `pnpm` (inside the web image only; `pnpm-lock.yaml` committed and installed with `pnpm install --frozen-lockfile`), strict TS, ESLint + Prettier, `vitest` for unit tests, Playwright for one happy-path E2E (Phase 1 end).
 - **Containers & Kubernetes:** all images build for `linux/arm64` and are tagged with the git SHA (never deploy `latest`). Pin base image tags. Every workload runs as non-root with `allowPrivilegeEscalation: false`, has CPU/memory requests and limits (3.6), and has readiness and liveness probes.
 - **Git:** trunk-based; feature branches `phase1/<workstream>-<task>`; conventional commits; every PR passes CI.
@@ -429,7 +430,7 @@ Music-theory utilities (`src/lib/music.ts`) must provide: `transposeKey(tonic, m
 
 | Phase | Theme | Outcome |
 |---|---|---|
-| **0** | Infrastructure | HTTPS "hello world" at `https://<sub>.duckdns.org` with every workload Ready in the `keyshift` namespace |
+| **0** | Infrastructure | HTTPS "hello world" at `https://<sub>.duckdns.org` with every workload Ready in the `pitchbend-live` namespace |
 | **1** | MVP | Paste URL or upload → hear it → transpose live → see detected key → download WAV |
 | **2** | Quality & practice tools | Studio-quality server export, loop regions, tempo control, vocal presets, better key UX |
 | **3** | Vocal intelligence | Melody-range analysis, voice-type fitting, hum-your-range test, saved songs |
@@ -442,25 +443,25 @@ Each phase must be deployed and working before the next begins.
 
 **Goal:** Reproducible Kubernetes manifests that serve a placeholder SPA and `/api/health` over HTTPS on the existing cluster.
 
-**Assumptions to verify first** (task 1): Traefik is running (IngressClass `traefik`), cert-manager is installed with the `letsencrypt-prod` ClusterIssuer, a default StorageClass exists, and the node has room for KeyShift's requests (§3.6). On this cluster, cert-manager and the issuer were installed by the Sudoku Solver repo (§3.7). Don't install or upgrade them from this repo. If they're ever missing, reinstall them through that repo's bootstrap step. Apply `infra/k8s-bootstrap/traefik-config.yaml` once, with sign-off, because it also changes Traefik for Sudoku.
+**Assumptions to verify first** (task 1): Traefik is running (IngressClass `traefik`), cert-manager is installed with the `letsencrypt-prod` ClusterIssuer, a default StorageClass exists, and the node has room for PitchBend Live's requests (§3.6). On this cluster, cert-manager and the issuer were installed by the Sudoku Solver repo (§3.7). Don't install or upgrade them from this repo. If they're ever missing, reinstall them through that repo's bootstrap step. Apply `infra/k8s-bootstrap/traefik-config.yaml` once, with sign-off, because it also changes Traefik for Sudoku.
 
 ### Tasks
 
 1. `infra/scripts/check-cluster.sh`: confirm `kubectl` access, node architecture is `arm64`, the Ingress controller pods are Running (print the IngressClass name), cert-manager and the ClusterIssuer exist, and a default StorageClass exists. Print a clear pass/fail for each check.
-2. `namespace.yaml` (`keyshift`), `configmap.yaml`, and `secret.example.yaml` per 6.2. Document the `kubectl create secret generic keyshift-secrets --from-literal=...` command in the README.
-3. `pvc.yaml`: `keyshift-data`, ReadWriteOnce, 50Gi, default StorageClass. Worker and api mount it read-write at `/data`; web mounts it read-only at `/data`. Add an init container (or `fsGroup`) so `/data/media` and `/data/db` exist with correct ownership.
+2. `namespace.yaml` (`pitchbend-live`), `configmap.yaml`, and `secret.example.yaml` per 6.2. Document the `kubectl create secret generic pitchbend-live-secrets --from-literal=...` command in the README.
+3. `pvc.yaml`: `pitchbend-live-data`, ReadWriteOnce, 50Gi, default StorageClass. Worker and api mount it read-write at `/data`; web mounts it read-only at `/data`. Add an init container (or `fsGroup`) so `/data/media` and `/data/db` exist with correct ownership.
 4. Images (`infra/docker/`), each multi-stage with a `dev` target for local Compose and a final production target for CI/Kubernetes (D17). Add a `.dockerignore` for each build context that excludes `.env` files, `.git`, `node_modules`, and `.venv`.
-   - `api.Dockerfile`: Python 3.12 slim, ffmpeg, a pinned `uv` binary, dependencies installed with `uv sync --frozen` (no dev dependencies in the production target), and the `keyshift` package. The default command runs uvicorn with `--proxy-headers`. The worker Deployment overrides the command to `arq keyshift.worker.WorkerSettings`. The `dev` target adds dev dependencies (ruff, mypy, pytest) and runs uvicorn with `--reload`.
+   - `api.Dockerfile`: Python 3.12 slim, ffmpeg, a pinned `uv` binary, dependencies installed with `uv sync --frozen` (no dev dependencies in the production target), and the `pitchbend_live` package. The default command runs uvicorn with `--proxy-headers`. The worker Deployment overrides the command to `arq pitchbend_live.worker.WorkerSettings`. The `dev` target adds dev dependencies (ruff, mypy, pytest) and runs uvicorn with `--reload`.
    - `web.Dockerfile`: the `dev` target runs the Vite dev server (Node 24 LTS, `pnpm install --frozen-lockfile`); the build stage runs the Vite build; the final stage copies `dist/` into `nginxinc/nginx-unprivileged` (listens on 8080).
    - `nginx.conf`: `/` serves the SPA with `try_files $uri /index.html`; `/media/` serves `/data/media/` with `Cache-Control: public, max-age=86400, immutable`; gzip on.
 5. Workloads: `web.yaml`, `api.yaml`, `worker.yaml` (Deployment, 1 replica each, `strategy: Recreate` for api and worker so two pods never write SQLite during a rollout), `valkey.yaml` (Deployment + Service, no persistence, `--save "" --appendonly no`), `uptime-kuma.yaml` (Deployment + its own 1Gi PVC, ClusterIP Service only). Apply resources from 3.6 and probes: api `GET /api/health`; web `GET /`; valkey `valkey-cli ping`; worker exec probe using ARQ's health check.
 6. `duckdns-cronjob.yaml`: every 5 minutes, `curlimages/curl` calls `https://www.duckdns.org/update?domains=$DUCKDNS_SUBDOMAIN&token=$DUCKDNS_TOKEN&ip=` and fails the Job if the response isn't `OK`. `successfulJobsHistoryLimit: 1`.
-7. `ingress.yaml`: host `$PUBLIC_HOST`, `cert-manager.io/cluster-issuer: letsencrypt-prod`, TLS secret `keyshift-tls`, and path rules `/api` → `api:8000`, `/media` → `web:8080`, `/` → `web:8080` (all `pathType: Prefix`). Controller-specific settings:
+7. `ingress.yaml`: host `$PUBLIC_HOST`, `cert-manager.io/cluster-issuer: letsencrypt-prod`, TLS secret `pitchbend-live-tls`, and path rules `/api` → `api:8000`, `/media` → `web:8080`, `/` → `web:8080` (all `pathType: Prefix`). Controller-specific settings:
    - **ingress-nginx:** `nginx.ingress.kubernetes.io/proxy-buffering: "off"`, `proxy-read-timeout: "3600"`, `proxy-send-timeout: "3600"`, `proxy-body-size: "55m"`.
    - **Traefik:** streams responses without buffering by default; confirm no buffering middleware is attached and that request body limits allow 55 MB.
    - **Other controllers:** find the equivalent of "disable response buffering," "long read timeout," and "max body size," and record them in an ADR.
-8. `kustomization.yaml` listing all resources with an `images:` block for `ghcr.io/<user>/keyshift-api` and `ghcr.io/<user>/keyshift-web`.
-9. Skeleton `apps/api` with `/api/health` plus `/api/health/stream` (an SSE endpoint that sends 5 ticks, one per second, used to verify the Ingress doesn't buffer), and a no-op ARQ worker. Skeleton `apps/web` Vite app showing "KeyShift".
+8. `kustomization.yaml` listing all resources with an `images:` block for `ghcr.io/<user>/pitchbend-live-api` and `ghcr.io/<user>/pitchbend-live-web`.
+9. Skeleton `apps/api` with `/api/health` plus `/api/health/stream` (an SSE endpoint that sends 5 ticks, one per second, used to verify the Ingress doesn't buffer), and a no-op ARQ worker. Skeleton `apps/web` Vite app showing "PitchBend Live".
 10. GitHub Actions: CI (lint + tests) on every PR; image build and push to GHCR for `linux/arm64` on `main`, tagged with the git SHA.
 11. `infra/scripts/deploy.sh <sha>`: set image tags (temporary Kustomize overlay, ADR 0002), apply `infra/k8s`, then `kubectl rollout status` for each Deployment.
 12. `infra/docker-compose.dev.yml` for local development, built locally from the `dev` targets in task 4:
@@ -472,11 +473,11 @@ Each phase must be deployed and working before the next begins.
 ### Acceptance criteria
 
 - `check-cluster.sh` passes all checks.
-- `curl -I https://<sub>.duckdns.org` returns 200 with a valid Let's Encrypt certificate (`kubectl get certificate -n keyshift` shows Ready).
+- `curl -I https://<sub>.duckdns.org` returns 200 with a valid Let's Encrypt certificate (`kubectl get certificate -n pitchbend-live` shows Ready).
 - `curl https://<sub>.duckdns.org/api/health` returns `{"status":"ok",...}`.
 - `curl -N https://<sub>.duckdns.org/api/health/stream` prints each tick about one second apart, not all at once at the end. This proves SSE isn't buffered.
 - A 50 MB test POST to `/api/health` (or a temporary echo endpoint) isn't rejected by the Ingress with 413.
-- `kubectl get pods -n keyshift` shows every pod Ready; rebooting the VM brings everything back without manual steps.
+- `kubectl get pods -n pitchbend-live` shows every pod Ready; rebooting the VM brings everything back without manual steps.
 - Deleting the namespace and re-running `deploy.sh` rebuilds everything (except Secrets, which are re-created per the README).
 - The duckdns CronJob's latest run succeeded.
 - CI is green on `main`, and images for the current SHA exist in GHCR.
@@ -635,6 +636,6 @@ Trade-offs, follow-up work, risks.
 | Single VM failure | Full outage | Everything is reproducible from the manifests; data is ephemeral by design |
 | Ingress buffers SSE or rejects uploads | Progress appears frozen; uploads fail with 413 | Controller annotations in Phase 0 task 7, verified by the `/api/health/stream` and 50 MB tests |
 | Cluster overhead squeezes the free VM | Slower processing | Requests/limits in 3.6, enforced in CI; Demucs is blocked until the VM is resized (§12) |
-| The one OCPU is shared with the Sudoku Solver | A Sudoku solve and a KeyShift ingest compete for CPU, and Pending pods if requests grow | 3.6 budget ceilings enforced by `validate-manifests.sh`; `check-cluster.sh` checks live headroom (≥ 250m for Sudoku's rollout surge); resizing to 4 OCPU / 24 GB stays free |
-| A shared component changes under us (Traefik, cert-manager, ClusterIssuer) | Certificates stop renewing, or SSE buffering/timeouts regress for both apps | Ownership table in 3.7; KeyShift manifests may only contain `keyshift`-namespaced objects (CI-enforced); Traefik changes only through the reviewed `infra/k8s-bootstrap/` file |
+| The one OCPU is shared with the Sudoku Solver | A Sudoku solve and a PitchBend Live ingest compete for CPU, and Pending pods if requests grow | 3.6 budget ceilings enforced by `validate-manifests.sh`; `check-cluster.sh` checks live headroom (≥ 250m for Sudoku's rollout surge); resizing to 4 OCPU / 24 GB stays free |
+| A shared component changes under us (Traefik, cert-manager, ClusterIssuer) | Certificates stop renewing, or SSE buffering/timeouts regress for both apps | Ownership table in 3.7; PitchBend Live manifests may only contain `pitchbend-live`-namespaced objects (CI-enforced); Traefik changes only through the reviewed `infra/k8s-bootstrap/` file |
 | Key detection mistakes | User confusion | Show confidence + alternates; one-tap override |

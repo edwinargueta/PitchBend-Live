@@ -5,7 +5,7 @@
 # Sudoku Solver (namespace sudoku-prod), so it's applied by hand, once, with
 # the user's sign-off (CLAUDE.md "Ask the user before you act").
 #
-# What it changes, and why KeyShift needs it:
+# What it changes, and why PitchBend Live needs it:
 #   - service.spec.externalTrafficPolicy: Local
 #       Keeps the real client IP. With the default (Cluster), k3s ServiceLB
 #       SNATs traffic, so X-Forwarded-For carries a cluster IP and every user

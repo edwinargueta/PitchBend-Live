@@ -10,7 +10,7 @@ import sqlite3
 from collections.abc import Callable
 from typing import Concatenate, ParamSpec, TypeVar
 
-from keyshift.db.connection import connect
+from pitchbend_live.db.connection import connect
 
 P = ParamSpec("P")
 T = TypeVar("T")

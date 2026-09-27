@@ -30,23 +30,23 @@ jobs:
           file: infra/docker/api.Dockerfile
           target: dev
           load: true
-          tags: keyshift-api:dev
+          tags: pitchbend-live-api:dev
           cache-from: type=gha,scope=api-dev
           cache-to: type=gha,mode=max,scope=api-dev
 
       - name: Lint (ruff)
-        run: docker run --rm keyshift-api:dev ruff check .
+        run: docker run --rm pitchbend-live-api:dev ruff check .
       - name: Format check (ruff)
-        run: docker run --rm keyshift-api:dev ruff format --check .
+        run: docker run --rm pitchbend-live-api:dev ruff format --check .
       - name: Type-check (mypy --strict)
-        run: docker run --rm keyshift-api:dev mypy keyshift
+        run: docker run --rm pitchbend-live-api:dev mypy pitchbend_live
       - name: Test (pytest + coverage gate; real Valkey for the rate-limit Lua script)
         run: |
           docker network create ci
           docker run -d --rm --name valkey --network ci valkey/valkey:9.1.2-trixie
           # §10 acceptance: >= 80% coverage for routes/, audio/, worker/.
-          docker run --rm --network ci -e KEYSHIFT_TEST_REDIS_URL=redis://valkey:6379/15 keyshift-api:dev \
-            sh -c 'pytest -q --cov=keyshift --cov-report=term-missing && coverage report --include="keyshift/routes/*,keyshift/audio/*,keyshift/worker/*" --fail-under=80'
+          docker run --rm --network ci -e PITCHBEND_LIVE_TEST_REDIS_URL=redis://valkey:6379/15 pitchbend-live-api:dev \
+            sh -c 'pytest -q --cov=pitchbend_live --cov-report=term-missing && coverage report --include="pitchbend_live/routes/*,pitchbend_live/audio/*,pitchbend_live/worker/*" --fail-under=80'
 
       - name: Build api prod image (no push)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -70,18 +70,18 @@ jobs:
           file: infra/docker/web.Dockerfile
           target: dev
           load: true
-          tags: keyshift-web:dev
+          tags: pitchbend-live-web:dev
           cache-from: type=gha,scope=web-dev
           cache-to: type=gha,mode=max,scope=web-dev
 
       - name: Lint (eslint)
-        run: docker run --rm keyshift-web:dev pnpm lint
+        run: docker run --rm pitchbend-live-web:dev pnpm lint
       - name: Format check (prettier)
-        run: docker run --rm keyshift-web:dev pnpm format:check
+        run: docker run --rm pitchbend-live-web:dev pnpm format:check
       - name: Type-check (tsc)
-        run: docker run --rm keyshift-web:dev pnpm typecheck
+        run: docker run --rm pitchbend-live-web:dev pnpm typecheck
       - name: Test (vitest + coverage thresholds from vite.config.ts)
-        run: docker run --rm keyshift-web:dev pnpm exec vitest run --coverage
+        run: docker run --rm pitchbend-live-web:dev pnpm exec vitest run --coverage
 
       - name: Build web prod image (no push)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -125,7 +125,7 @@ jobs:
           file: infra/docker/api.Dockerfile
           target: dev
           load: true
-          tags: keyshift-api:dev
+          tags: pitchbend-live-api:dev
           cache-from: type=gha,scope=api-dev
       - name: Build web dev image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -134,7 +134,7 @@ jobs:
           file: infra/docker/web.Dockerfile
           target: dev
           load: true
-          tags: keyshift-web:dev
+          tags: pitchbend-live-web:dev
           cache-from: type=gha,scope=web-dev
       - name: Start the stack
         run: |

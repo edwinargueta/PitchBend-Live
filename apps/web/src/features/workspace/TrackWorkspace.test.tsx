@@ -250,7 +250,7 @@ describe("TrackWorkspace", () => {
     await waitFor(() => {
       expect(downloadBlob).toHaveBeenCalledWith(
         expect.any(Blob),
-        "KeyShift export (0).wav",
+        "PitchBend Live export (0).wav",
       );
     });
   });

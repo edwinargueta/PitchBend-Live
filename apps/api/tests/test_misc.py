@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from keyshift import storage
-from keyshift.audio.sniff import sniff_audio
-from keyshift.clock import format_ts, now_ts, parse_ts, ts_after, utcnow
-from keyshift.settings import Settings
+from pitchbend_live import storage
+from pitchbend_live.audio.sniff import sniff_audio
+from pitchbend_live.clock import format_ts, now_ts, parse_ts, ts_after, utcnow
+from pitchbend_live.settings import Settings
 
 
 @pytest.mark.parametrize(
@@ -119,9 +119,9 @@ def test_remove_path(tmp_path: Path) -> None:
 
 def test_api_never_imports_worker_ytdlp_or_librosa() -> None:
     code = (
-        "import sys, keyshift.main\n"
-        "bad = [m for m in ('librosa', 'numba', 'yt_dlp', 'keyshift.worker',"
-        " 'keyshift.audio.key_detection') if m in sys.modules]\n"
+        "import sys, pitchbend_live.main\n"
+        "bad = [m for m in ('librosa', 'numba', 'yt_dlp', 'pitchbend_live.worker',"
+        " 'pitchbend_live.audio.key_detection') if m in sys.modules]\n"
         "assert not bad, bad\n"
     )
     subprocess.run([sys.executable, "-c", code], check=True, timeout=60)
@@ -129,7 +129,7 @@ def test_api_never_imports_worker_ytdlp_or_librosa() -> None:
 
 def test_worker_import_does_not_load_librosa() -> None:
     code = (
-        "import sys, keyshift.worker\n"
+        "import sys, pitchbend_live.worker\n"
         "assert 'librosa' not in sys.modules\n"
         "assert 'yt_dlp' in sys.modules\n"
     )

@@ -6,7 +6,7 @@ metadata:
   name: worker
   labels:
     app.kubernetes.io/name: worker
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
 spec:
   # SQLite single writer (CLAUDE.md §5): exactly 1 replica, and Recreate so the
   # old and new pods never overlap during a rollout. See api.yaml.
@@ -21,7 +21,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: worker
-        app.kubernetes.io/part-of: keyshift
+        app.kubernetes.io/part-of: pitchbend-live
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
@@ -36,7 +36,7 @@ spec:
       initContainers:
         # Same as api.yaml (either pod may start first on a fresh PVC).
         - name: init-data-dirs
-          image: ghcr.io/edwinargueta/keyshift-api:set-by-deploy-sh
+          image: ghcr.io/edwinargueta/pitchbend-live-api:set-by-deploy-sh
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -58,14 +58,14 @@ spec:
               mountPath: /data
       containers:
         - name: worker
-          image: ghcr.io/edwinargueta/keyshift-api:set-by-deploy-sh
+          image: ghcr.io/edwinargueta/pitchbend-live-api:set-by-deploy-sh
           imagePullPolicy: IfNotPresent
-          command: ["arq", "keyshift.worker.WorkerSettings"]
+          command: ["arq", "pitchbend_live.worker.WorkerSettings"]
           envFrom:
             - configMapRef:
-                name: keyshift-config
+                name: pitchbend-live-config
             - secretRef:
-                name: keyshift-secrets
+                name: pitchbend-live-secrets
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -79,24 +79,24 @@ spec:
               memory: 2Gi
           # `arq --check` exits 0 only while the worker's health key exists in
           # Valkey. The worker rewrites it every 30 s with a 31 s TTL
-          # (health_check_interval in keyshift/worker), so periods stay <= 30 s and
+          # (health_check_interval in pitchbend_live/worker), so periods stay <= 30 s and
           # failureThreshold >= 3 tolerates one missed refresh. timeoutSeconds is
           # 10 because each probe starts a Python interpreter.
           startupProbe:
             exec:
-              command: ["arq", "--check", "keyshift.worker.WorkerSettings"]
+              command: ["arq", "--check", "pitchbend_live.worker.WorkerSettings"]
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 12
           readinessProbe:
             exec:
-              command: ["arq", "--check", "keyshift.worker.WorkerSettings"]
+              command: ["arq", "--check", "pitchbend_live.worker.WorkerSettings"]
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 3
           livenessProbe:
             exec:
-              command: ["arq", "--check", "keyshift.worker.WorkerSettings"]
+              command: ["arq", "--check", "pitchbend_live.worker.WorkerSettings"]
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 3
@@ -106,4 +106,4 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: keyshift-data
+            claimName: pitchbend-live-data

@@ -1,16 +1,16 @@
-# The only environment KeyShift has (CLAUDE.md §5): there is no staging, so
+# The only environment PitchBend Live has (CLAUDE.md §5): there is no staging, so
 # anything applied here is a production change.
 #
-# Pod Security Admission: every KeyShift pod meets the "restricted" profile, so
+# Pod Security Admission: every PitchBend Live pod meets the "restricted" profile, so
 # `kubectl apply` warns if a future manifest regresses. Only "baseline" is
 # enforced because cert-manager creates its HTTP-01 solver pods in this
 # namespace, and older cert-manager versions don't meet "restricted".
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: keyshift
+  name: pitchbend-live
   labels:
-    app.kubernetes.io/part-of: keyshift
+    app.kubernetes.io/part-of: pitchbend-live
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/warn: restricted
     pod-security.kubernetes.io/audit: restricted

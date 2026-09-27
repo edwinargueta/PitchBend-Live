@@ -5,7 +5,7 @@
 #
 #   infra/scripts/validate-manifests.sh
 #
-# Checks: kustomize render, kubeconform -strict, KeyShift guardrails (CLAUDE.md):
+# Checks: kustomize render, kubeconform -strict, PitchBend Live guardrails (CLAUDE.md):
 # no Secret, pinned image tags, SQLite single writer, Ingress settings, namespace
 # scoping, Ingress class, the ADR 0003 resource budget, and isolation of the
 # cluster-wide infra/k8s-bootstrap. Then shellcheck on infra/scripts/*.sh.
@@ -17,7 +17,7 @@ KUBECONFORM_IMAGE="ghcr.io/yannh/kubeconform:v0.8.0"
 SHELLCHECK_IMAGE="koalaman/shellcheck:v0.11.0"
 YQ_IMAGE="mikefarah/yq:4.53.6"                         # MIT; linux/arm64 build verified
 
-# KeyShift's resource budget on the shared 1 OCPU / 6 GB node. Source of truth:
+# PitchBend Live's resource budget on the shared 1 OCPU / 6 GB node. Source of truth:
 # docs/adr/0003-shared-cluster-with-sudoku-solver.md (and ARCHITECTURE.md §3.6).
 # Raising any ceiling needs a new ADR. The totals count long-running containers
 # (Deployment/StatefulSet/ReplicaSet containers x replicas; DaemonSet/Pod x 1).
@@ -28,10 +28,10 @@ BUDGET_MEMORY_REQUESTS="640Mi"              # total memory requests
 BUDGET_MEMORY_LIMITS="3Gi"                  # total memory limits
 BUDGET_MAX_CONTAINER_MEMORY_LIMIT="2Gi"     # memory limit of any single container
 
-NAMESPACE="keyshift"        # the only namespace KeyShift may touch (ADR 0003)
+NAMESPACE="pitchbend-live"        # the only namespace PitchBend Live may touch (ADR 0003)
 INGRESS_CLASS="traefik"     # k3s's bundled Traefik, shared with the Sudoku Solver
 
-# Kinds KeyShift must never create: cluster-scoped objects, and objects that
+# Kinds PitchBend Live must never create: cluster-scoped objects, and objects that
 # configure components shared by every app on the cluster (k3s HelmChart/
 # HelmChartConfig reconfigure Traefik and friends). Anything whose kind starts
 # with "Cluster", and anything in CLUSTER_API_GROUPS, is rejected as well.

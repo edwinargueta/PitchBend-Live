@@ -12,28 +12,28 @@ import pytest
 from fastapi.testclient import TestClient
 from yt_dlp.utils import DownloadError
 
-from keyshift.audio import ffmpeg, key_detection
-from keyshift.clock import now_ts, ts_after
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.logs import (
+from pitchbend_live.audio import ffmpeg, key_detection
+from pitchbend_live.clock import now_ts, ts_after
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.logs import (
     AccessLogFilter,
     JsonFormatter,
     SilentYtDlpLogger,
     _StdoutHandler,
     configure_logging,
 )
-from keyshift.main import create_app
-from keyshift.services import Services
-from keyshift.settings import Settings, get_settings
-from keyshift.worker import youtube
-from keyshift.worker.context import WorkerDeps
+from pitchbend_live.main import create_app
+from pitchbend_live.services import Services
+from pitchbend_live.settings import Settings, get_settings
+from pitchbend_live.worker import youtube
+from pitchbend_live.worker.context import WorkerDeps
 from tests.conftest import FakeLimiter, FakeProbe, FakeQueue
 from tests.worker_fakes import FakeFFmpeg, YtDlpScript, default_info, fake_youtubedl
 
 
 def record(msg: str = "hello %s", args: Any = ("world",), **extra: Any) -> logging.LogRecord:
-    rec = logging.LogRecord("keyshift.test", logging.INFO, __file__, 1, msg, args, None)
+    rec = logging.LogRecord("pitchbend_live.test", logging.INFO, __file__, 1, msg, args, None)
     rec.__dict__.update(extra)
     return rec
 
@@ -47,7 +47,7 @@ def test_formatter_emits_allowlisted_fields_only() -> None:
     doc = json.loads(line)
     assert set(doc) == {"ts", "level", "logger", "msg", "job_id", "track_id", "event", "code"}
     assert doc["msg"] == "hello world"
-    assert doc["level"] == "INFO" and doc["logger"] == "keyshift.test"
+    assert doc["level"] == "INFO" and doc["logger"] == "pitchbend_live.test"
     assert doc["ts"].endswith("Z") and len(doc["ts"]) == 24
     assert "https://x" not in line and '"T"' not in line
 

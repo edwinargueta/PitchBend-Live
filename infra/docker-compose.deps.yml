@@ -4,7 +4,7 @@
 #
 # `make dev` starts these and stops them on exit. `make up` uses
 # infra/docker-compose.dev.yml instead and doesn't touch these.
-name: keyshift-deps
+name: pitchbend-live-deps
 
 services:
   valkey:

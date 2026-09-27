@@ -11,11 +11,11 @@ from pathlib import Path
 from arq.connections import ArqRedis
 from redis.asyncio import ConnectionPool, Redis
 
-from keyshift.audio import ffmpeg
-from keyshift.db import Database
-from keyshift.queue import ArqQueue, JobQueue
-from keyshift.ratelimit import RateLimiter, TokenBucketLimiter
-from keyshift.settings import Settings
+from pitchbend_live.audio import ffmpeg
+from pitchbend_live.db import Database
+from pitchbend_live.queue import ArqQueue, JobQueue
+from pitchbend_live.ratelimit import RateLimiter, TokenBucketLimiter
+from pitchbend_live.settings import Settings
 
 Probe = Callable[[Path], Awaitable[ffmpeg.ProbeResult]]
 

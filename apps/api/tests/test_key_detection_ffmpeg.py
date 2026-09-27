@@ -19,8 +19,8 @@ import numpy as np
 import pytest
 from key_fixtures import synth
 
-from keyshift.audio import key_detection as kd
-from keyshift.audio.key_detection import KeyDetectionError, decode, detect_key
+from pitchbend_live.audio import key_detection as kd
+from pitchbend_live.audio.key_detection import KeyDetectionError, decode, detect_key
 
 pytestmark = pytest.mark.skipif(
     shutil.which("ffmpeg") is None, reason="needs ffmpeg (runs in the api container)"

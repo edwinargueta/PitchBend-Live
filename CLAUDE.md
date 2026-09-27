@@ -1,6 +1,6 @@
-# CLAUDE.md — KeyShift guardrails
+# CLAUDE.md — PitchBend Live guardrails
 
-**KeyShift** (repo `PitchBend-Live`) lets a musician paste a YouTube URL or upload audio, then transpose it live in the browser without changing tempo. It runs at **$0/month** on one Oracle Always-Free Ampere A1 (arm64) VM with single-node Kubernetes.
+**PitchBend Live** (repo `PitchBend-Live`) lets a musician paste a YouTube URL or upload audio, then transpose it live in the browser without changing tempo. It runs at **$0/month** on one Oracle Always-Free Ampere A1 (arm64) VM with single-node Kubernetes.
 
 `ARCHITECTURE.md` holds the full design, contracts, and phase plan. This file does **not** summarize it. It lists the rules that cause **silent, costly, or hard-to-reverse** damage when broken, and explains how to find things in the design doc. Here, `§N` means a section of ARCHITECTURE.md and `DN` means a row in its §5 decision log. Sections of *this* file are referred to by name.
 
@@ -24,7 +24,7 @@
 | VM size (1 OCPU / 6 GB), per-workload requests and limits | §3.6, ADR 0003 |
 | Shared cluster with the Sudoku Solver (Traefik, cert-manager, issuer) | §3.7, ADR 0003 |
 | Topology diagram and the core principle | §4 |
-| Why a decision was made (D1–D22) | §5 |
+| Why a decision was made (D1–D23) | §5 |
 | Repo layout, env vars, identifiers | §6.1–6.3 |
 | REST API, SSE events, error codes | §6.4–6.6 |
 | SQLite schema; `AudioEngine` interface and music-theory utils | §6.7, §6.8 |
@@ -39,8 +39,8 @@
 
 These actions touch production, publish something, or break the project's premise. Approval for one of them does not cover the next.
 
-- **Anything that touches the cluster.** The `keyshift` namespace on the Oracle VM is the **only** environment. There is no staging. Running `infra/scripts/deploy.sh`, `kubectl apply -k infra/k8s`, or any `kubectl delete/edit/patch/scale/rollout restart` in `keyshift` changes production. Deleting the namespace or PVC also destroys `keyshift-secrets`, which is stored nowhere else.
-- **Anything outside the `keyshift` namespace.** The cluster is shared with the Sudoku Solver (§3.7). Treat each of these as another app's production:
+- **Anything that touches the cluster.** The `pitchbend-live` namespace on the Oracle VM is the **only** environment. There is no staging. Running `infra/scripts/deploy.sh`, `kubectl apply -k infra/k8s`, or any `kubectl delete/edit/patch/scale/rollout restart` in `pitchbend-live` changes production. Deleting the namespace or PVC also destroys `pitchbend-live-secrets`, which is stored nowhere else.
+- **Anything outside the `pitchbend-live` namespace.** The cluster is shared with the Sudoku Solver (§3.7). Treat each of these as another app's production:
   - `sudoku-prod`
   - `kube-system` (Traefik, including applying `infra/k8s-bootstrap/`)
   - `cert-manager` and the `letsencrypt-prod` ClusterIssuer
@@ -94,7 +94,7 @@ Breaking any of these invalidates the project's premise. Each one requires an AD
 
 The repo, every GHCR image, and CI logs are **public by design**. A leaked secret stays public forever.
 
-- The only secrets are **`DUCKDNS_TOKEN`** and **`SENTRY_DSN`** (§6.2). They live only in the K8s Secret `keyshift-secrets` or in the git-ignored `apps/api/.env`. Create the Secret with `kubectl create secret generic` and never commit it. `infra/k8s/secret.example.yaml` holds placeholders only.
+- The only secrets are **`DUCKDNS_TOKEN`** and **`SENTRY_DSN`** (§6.2). They live only in the K8s Secret `pitchbend-live-secrets` or in the git-ignored `apps/api/.env`. Create the Secret with `kubectl create secret generic` and never commit it. `infra/k8s/secret.example.yaml` holds placeholders only.
 - A secret must never enter git, not even "temporarily," because pushing publishes the whole history. `.gitignore` must exclude `apps/api/.env` **before the first commit**.
 - Never put a secret in a Dockerfile, build arg, or build context, and never log one. Logs are JSON on stdout, keyed by `job_id`/`track_id`, and never include secrets, cookies, or raw request headers (§7).
 - Because the repo is public, PR workflows must trigger on `pull_request`, never `pull_request_target`. Only the image-push workflow on `main` gets `packages: write`.
@@ -128,7 +128,7 @@ These are deliberate mitigations (D10–D12, §14), not incidental behavior.
 - **No enumerable library.**
   - Don't add a listing, search, or index endpoint. Tracks are reachable only by their unguessable `track_id`.
   - Keep nginx `autoindex` off for `/media/`, and serve nothing outside `/data/media/`.
-  - The web pod mounts all of `/data` read-only, including `/data/db/keyshift.db`. Give both the `location` and the `alias` a trailing slash (`location /media/ { alias /data/media/; }`) so a request can't traverse into the DB.
+  - The web pod mounts all of `/data` read-only, including `/data/db/pitchbend-live.db`. Give both the `location` and the `alias` a trailing slash (`location /media/ { alias /data/media/; }`) so a request can't traverse into the DB.
 - **Upload is a first-class input**, not a degraded mode (D10). Keep the personal-practice framing. The `SOURCE_BLOCKED` error must prominently suggest uploading.
 - **Keep yt-dlp current** by rebuilding the api image weekly. The worker reuses that image (D16).
 - There are no accounts or PII today, so the SQLite DB is low-sensitivity. If Phase 3 adds accounts, revisit data classification and retention *before* building them.
@@ -139,14 +139,14 @@ These are deliberate mitigations (D10–D12, §14), not incidental behavior.
 
 - **Exactly two processes write SQLite: one `api` pod and one `worker` pod.** Both run with **`replicas: 1`** and **`strategy: Recreate`** (§9 task 5), so two writer pods never overlap during a rollout. Never raise replicas, add an HPA, or switch either one to RollingUpdate, because that can corrupt the DB. Any new writer, such as a Phase 3 Demucs Job, needs an ADR.
 - **Valkey is ephemeral** (D5; `--save "" --appendonly no`). Queued jobs disappear when it restarts, and clients retry. Never store anything in Valkey that has to survive a restart. SQLite is the system of record.
-- **The `keyshift-data` PVC is ReadWriteOnce.** Web, api, and worker all share it, which pins every pod to this one node **on purpose** (D7). Don't add a node without first migrating to ReadWriteMany storage (§3.3).
+- **The `pitchbend-live-data` PVC is ReadWriteOnce.** Web, api, and worker all share it, which pins every pod to this one node **on purpose** (D7). Don't add a node without first migrating to ReadWriteMany storage (§3.3).
 - **The cluster must be rebuildable from `infra/k8s/` alone.** Oracle can reclaim idle instances (§3.3, §14), so the manifests plus a re-created Secret must be enough to bring everything back. A VM reboot must recover without manual steps. Never depend on state that can't be reproduced that way.
 - **Respect the VM budget** (§3.6, ADR 0003). The VM is only **1 OCPU / 6 GB**, shared with k3s and the Sudoku Solver.
   - Every workload sets both CPU/memory requests **and** limits, taken from the §3.6 table.
-  - KeyShift's total must stay within **200m CPU / 640Mi** of requests, with no memory limit above 2Gi and ≤ 3Gi of limits in total. CI (`validate-manifests.sh`) enforces this, and raising it needs an ADR.
+  - PitchBend Live's total must stay within **200m CPU / 640Mi** of requests, with no memory limit above 2Gi and ≤ 3Gi of limits in total. CI (`validate-manifests.sh`) enforces this, and raising it needs an ADR.
   - At least 250m CPU must stay unrequested on the node, or Sudoku's rollouts hang Pending.
-- **The cluster is shared, and only `keyshift` is ours** (§3.7):
-  - KeyShift manifests may contain only objects in namespace `keyshift` (plus that Namespace); CI rejects cluster-scoped kinds.
+- **The cluster is shared, and only `pitchbend-live` is ours** (§3.7):
+  - PitchBend Live manifests may contain only objects in namespace `pitchbend-live` (plus that Namespace); CI rejects cluster-scoped kinds.
   - Traefik, cert-manager, and the `letsencrypt-prod` issuer belong to the cluster or the Sudoku repo. Reference them; never install, upgrade, or edit them from here.
   - The only sanctioned Traefik change is the reviewed, hand-applied `infra/k8s-bootstrap/traefik-config.yaml`.
 - **Deployment is manual only** (§7). The user runs `infra/scripts/deploy.sh <sha>`. Never add a CD step, and never store cluster credentials in GitHub.
@@ -180,7 +180,7 @@ Behavioral invariants that are easy to break without touching a schema:
 
 These are defaults, not suggestions (§7).
 
-- **Python:** 3.12, `uv` (in the api image; on the host only for `make dev`; never pip), `ruff` for lint and format, `pytest`, type hints everywhere, and `mypy --strict` on `keyshift/`.
+- **Python:** 3.12, `uv` (in the api image; on the host only for `make dev`; never pip), `ruff` for lint and format, `pytest`, type hints everywhere, and `mypy --strict` on `pitchbend_live/`.
 - **TypeScript:** Node 24 LTS (Node 20 is end-of-life), `pnpm` via corepack (in the web image; on the host only for `make dev`; never npm or yarn), strict TS, ESLint + Prettier, and `vitest`. Add one Playwright happy-path E2E test at the end of Phase 1.
 - **Images and K8s:**
   - Build for `linux/arm64`.

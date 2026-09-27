@@ -4,8 +4,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from keyshift.routes import health
-from keyshift.settings import get_settings
+from pitchbend_live.routes import health
+from pitchbend_live.settings import get_settings
 
 
 def tick(n: int) -> str:

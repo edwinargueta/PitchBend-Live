@@ -22,11 +22,11 @@ import anyio
 from redis.asyncio import Redis
 from redis.exceptions import WatchError
 
-from keyshift.db import Database
-from keyshift.db import repository as repo
-from keyshift.errors import NON_FATAL, ErrorCode, default_message
-from keyshift.settings import Settings
-from keyshift.storage import media_url
+from pitchbend_live.db import Database
+from pitchbend_live.db import repository as repo
+from pitchbend_live.errors import NON_FATAL, ErrorCode, default_message
+from pitchbend_live.settings import Settings
+from pitchbend_live.storage import media_url
 
 logger = logging.getLogger(__name__)
 

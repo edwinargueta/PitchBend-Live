@@ -1,4 +1,4 @@
-"""Enqueueing ARQ jobs from the api (the api never imports ``keyshift.worker``).
+"""Enqueueing ARQ jobs from the api (the api never imports ``pitchbend_live.worker``).
 
 The ARQ job id is our ``job_id``, so a repeated enqueue of the same job is a no-op.
 """
