@@ -1,0 +1,55 @@
+# KeyShift production manifests: the only environment (CLAUDE.md §5). Deploy
+# with infra/scripts/deploy.sh <git-sha>, which applies a temporary overlay that
+# sets both image tags. It never edits this file.
+#
+# Render locally without touching the cluster:
+#   kubectl kustomize infra/k8s
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: keyshift
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: keyshift
+    # Selectors are immutable, so keep this label out of them (and out of pod
+    # templates; each manifest sets it there itself).
+    includeSelectors: false
+
+# secret.example.yaml is deliberately NOT listed: it is a template. The real
+# Secret is created with kubectl (see that file), and applying the template
+# would overwrite it.
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - valkey.yaml
+  - api.yaml
+  - worker.yaml
+  - web.yaml
+  - uptime-kuma.yaml
+  - duckdns-cronjob.yaml
+  - ingress.yaml
+
+# The placeholder tag makes a bare `kubectl apply -k infra/k8s` fail safely with
+# ImagePullBackOff; it never falls back to `latest`. deploy.sh overrides newTag
+# with the git SHA of an image CI has pushed to GHCR.
+images:
+  - name: ghcr.io/edwinargueta/keyshift-api
+    newTag: set-by-deploy-sh
+  - name: ghcr.io/edwinargueta/keyshift-web
+    newTag: set-by-deploy-sh
+
+# PUBLIC_HOST is set once, in the ConfigMap, and copied into the Ingress.
+replacements:
+  - source:
+      kind: ConfigMap
+      name: keyshift-config
+      fieldPath: data.PUBLIC_HOST
+    targets:
+      - select:
+          kind: Ingress
+          name: keyshift
+        fieldPaths:
+          - spec.rules.0.host
+          - spec.tls.0.hosts.0

@@ -1,0 +1,58 @@
+[project]
+name = "keyshift"
+version = "0.0.0"
+description = "KeyShift API (FastAPI) and background worker (ARQ)"
+requires-python = "==3.12.*"
+license = "GPL-3.0-or-later"
+dependencies = [
+    "arq>=0.28.0",
+    "fastapi>=0.141.1",
+    "pydantic-settings>=2.15.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv]
+# arm64 is the only production architecture (CLAUDE.md §1): fail resolution if a
+# dependency can't be installed on linux/aarch64.
+required-environments = ["sys_platform == 'linux' and platform_machine == 'aarch64'"]
+
+[tool.uv.build-backend]
+module-name = "keyshift"
+module-root = ""
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["keyshift"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+cache_dir = "/tmp/.pytest_cache"
+addopts = ["-ra", "--strict-markers", "--strict-config"]

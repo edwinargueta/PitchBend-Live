@@ -1,0 +1,95 @@
+# Lint, type-check, and test on every PR (ARCHITECTURE.md §7).
+# Checks run inside the same `dev` images used locally (ADR 0001), on native arm64 runners.
+# Uses `pull_request`, never `pull_request_target`: this repo is public and fork PRs must not
+# get secrets or write tokens (CLAUDE.md). Read-only token; no cluster credentials, ever.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build api dev image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/api.Dockerfile
+          target: dev
+          load: true
+          tags: keyshift-api:dev
+          cache-from: type=gha,scope=api-dev
+          cache-to: type=gha,mode=max,scope=api-dev
+
+      - name: Lint (ruff)
+        run: docker run --rm keyshift-api:dev ruff check .
+      - name: Format check (ruff)
+        run: docker run --rm keyshift-api:dev ruff format --check .
+      - name: Type-check (mypy --strict)
+        run: docker run --rm keyshift-api:dev mypy keyshift
+      - name: Test (pytest)
+        run: docker run --rm keyshift-api:dev pytest -q
+
+      - name: Build api prod image (no push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/api.Dockerfile
+          target: prod
+          push: false
+          cache-from: type=gha,scope=api-prod
+
+  web:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build web dev image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/web.Dockerfile
+          target: dev
+          load: true
+          tags: keyshift-web:dev
+          cache-from: type=gha,scope=web-dev
+          cache-to: type=gha,mode=max,scope=web-dev
+
+      - name: Lint (eslint)
+        run: docker run --rm keyshift-web:dev pnpm lint
+      - name: Format check (prettier)
+        run: docker run --rm keyshift-web:dev pnpm format:check
+      - name: Type-check (tsc)
+        run: docker run --rm keyshift-web:dev pnpm typecheck
+      - name: Test (vitest)
+        run: docker run --rm keyshift-web:dev pnpm test
+
+      - name: Build web prod image (no push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/web.Dockerfile
+          target: prod
+          push: false
+          cache-from: type=gha,scope=web-prod
+
+  manifests:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Render and validate Kustomize output
+        run: infra/scripts/validate-manifests.sh

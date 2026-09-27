@@ -1,0 +1,19 @@
+# BuildKit uses this file (instead of a root .dockerignore) for builds with
+# -f infra/docker/web.Dockerfile. The context is the repo root, so this is an
+# ALLOWLIST: exclude everything, re-include only what the web image needs.
+# The repo and images are public; a file that slips in here is public forever.
+*
+!apps/web/
+!infra/docker/nginx.conf
+
+# Re-exclude inside the allowlisted paths.
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+**/.cache
+**/*.tsbuildinfo
+**/*.log
+**/.DS_Store

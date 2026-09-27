@@ -1,0 +1,12 @@
+# Local runtime config holds secrets (CLAUDE.md §2) — never commit it.
+.env
+.env.*
+!.env.example
+
+# Python/tooling artifacts (normally inside containers, but never commit them)
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

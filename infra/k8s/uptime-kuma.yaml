@@ -1,0 +1,133 @@
+# Uptime Kuma (MIT): external uptime checks. It also generates the regular
+# traffic that keeps Oracle from reclaiming the VM as idle (ARCHITECTURE.md §3.3).
+# No Ingress, so it is not public. Open it with:
+#   kubectl -n keyshift port-forward svc/uptime-kuma 3001:3001   # http://localhost:3001
+#
+# Image: 2.5.5-slim-rootless (linux/arm64 verified on Docker Hub).
+#   slim:     no bundled Chromium or MariaDB; we use SQLite and no browser monitors.
+#   rootless: USER node (uid/gid 1000). The Phase 0 smoke test must confirm it
+#             starts non-root and can write /app/data on this cluster's storage.
+#             Its optional nscd DNS cache needs sudo, which
+#             allowPrivilegeEscalation: false blocks; upstream logs that failure
+#             and continues.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uptime-kuma-data
+  labels:
+    app.kubernetes.io/name: uptime-kuma
+    app.kubernetes.io/part-of: keyshift
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uptime-kuma
+  labels:
+    app.kubernetes.io/name: uptime-kuma
+    app.kubernetes.io/part-of: keyshift
+spec:
+  replicas: 1
+  # It keeps its own SQLite DB on uptime-kuma-data: one writer, no overlap.
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: uptime-kuma
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: uptime-kuma
+        app.kubernetes.io/part-of: keyshift
+    spec:
+      automountServiceAccountToken: false
+      # REQUIRED here, not just hardening: the Service named "uptime-kuma" would
+      # otherwise inject UPTIME_KUMA_PORT=tcp://<ip>:3001, which Uptime Kuma
+      # reads as its listen port.
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: uptime-kuma
+          image: louislam/uptime-kuma:2.5.5-slim-rootless
+          imagePullPolicy: IfNotPresent
+          env:
+            # Use SQLite and skip the 2.x "choose a database" setup page, so a
+            # rebuilt cluster comes up without manual steps.
+            - name: UPTIME_KUMA_DB_TYPE
+              value: sqlite
+          ports:
+            - name: http
+              containerPort: 3001
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 160Mi
+            limits:
+              cpu: 250m
+              memory: 320Mi
+          # The first start creates and migrates the DB, which is slow at
+          # 250m CPU: allow up to 10 minutes before liveness takes over. Upstream's
+          # own healthcheck also GETs / on :3001.
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Lenient, like upstream's HEALTHCHECK (60 s interval, 5 retries):
+          # Node's event loop can stall briefly under load.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: uptime-kuma-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uptime-kuma
+  labels:
+    app.kubernetes.io/name: uptime-kuma
+    app.kubernetes.io/part-of: keyshift
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: uptime-kuma
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http

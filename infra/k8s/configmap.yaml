@@ -1,0 +1,24 @@
+# Non-secret runtime configuration. Keys AND values are a contract
+# (ARCHITECTURE.md §6.2, CLAUDE.md §6): other workstreams build against them,
+# so change them only via an ADR. api and worker get these with envFrom.
+#
+# PUBLIC_HOST is also copied into the Ingress host and TLS host by the
+# `replacements:` block in kustomization.yaml, so this is the only place to set it.
+#
+# ConfigMap values must be strings, hence the quoted numbers.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keyshift-config
+data:
+  PUBLIC_HOST: keyshift.duckdns.org
+  DUCKDNS_SUBDOMAIN: keyshift
+  REDIS_URL: redis://valkey:6379/0
+  DB_PATH: /data/db/keyshift.db
+  MEDIA_DIR: /data/media
+  MEDIA_BASE_URL: /media
+  MAX_DURATION_S: "720"
+  MAX_UPLOAD_MB: "50"
+  MEDIA_TTL_HOURS: "24"
+  RATE_LIMIT_JOBS_PER_HOUR: "10"
+  WORKER_CONCURRENCY: "1"

@@ -1,0 +1,22 @@
+# BuildKit reads this file (not the root .dockerignore) for
+# `docker build -f infra/docker/api.Dockerfile .` — the context is the repo root.
+#
+# ALLOWLIST: exclude everything, then re-include only what the api image needs.
+# Anything not listed below (apps/api/.env, .git, apps/web, infra/, docs/) never
+# reaches the builder, so it can't end up in a public GHCR image (CLAUDE.md §2).
+*
+!apps/api/pyproject.toml
+!apps/api/uv.lock
+!apps/api/keyshift/
+!apps/api/tests/
+
+# Re-exclude secrets and local artifacts even inside the allowlisted directories.
+**/.env
+**/.env.*
+**/__pycache__
+**/*.py[cod]
+**/.venv
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.DS_Store

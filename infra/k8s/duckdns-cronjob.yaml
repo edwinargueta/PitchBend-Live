@@ -1,0 +1,93 @@
+# Keeps the DuckDNS A record pointed at this VM, so DNS self-heals if the public
+# IP ever changes (ARCHITECTURE.md §3.3, §9 task 6). An empty `ip=` makes DuckDNS
+# use the request's source address, which is the VM's public IP after SNAT.
+#
+# SECRET HANDLING (CLAUDE.md §2): the token is never echoed and never on a
+# command line. curl reads the URL from a config on stdin, written by the
+# shell's builtin printf, so the token isn't in argv, `ps`, or curl's error
+# messages. No `set -x`. Only the two variables this Job needs are injected
+# (no envFrom).
+#
+# Image: curlimages/curl:8.22.0 (curl license, MIT-style; linux/arm64 verified).
+# uid 100 / gid 101 is the image's curl_user; it has to be numeric because the
+# image's USER is a name, which runAsNonRoot can't verify.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: duckdns
+  labels:
+    app.kubernetes.io/name: duckdns
+    app.kubernetes.io/part-of: keyshift
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  # A run that can't start within 2 minutes is skipped; the next one is 5 minutes away anyway.
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: duckdns
+            app.kubernetes.io/part-of: keyshift
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 101
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: duckdns
+              image: curlimages/curl:8.22.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: DUCKDNS_SUBDOMAIN
+                  valueFrom:
+                    configMapKeyRef:
+                      name: keyshift-config
+                      key: DUCKDNS_SUBDOMAIN
+                - name: DUCKDNS_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: keyshift-secrets
+                      key: DUCKDNS_TOKEN
+              command: ["/bin/sh", "-c"]
+              # --ipv4: DuckDNS auto-detects only IPv4 addresses for an empty ip=.
+              args:
+                - |
+                  set -eu
+                  body=$(printf 'url = "https://www.duckdns.org/update?domains=%s&token=%s&ip="\n' \
+                           "$DUCKDNS_SUBDOMAIN" "$DUCKDNS_TOKEN" \
+                         | curl --config - --ipv4 --silent --show-error --fail \
+                                --max-time 30 --retry 2 --retry-delay 5) || {
+                    echo "duckdns: update request failed" >&2
+                    exit 1
+                  }
+                  if [ "$body" = "OK" ]; then
+                    echo "duckdns: updated ${DUCKDNS_SUBDOMAIN}.duckdns.org"
+                  elif [ "$body" = "KO" ]; then
+                    echo "duckdns: rejected (KO): check DUCKDNS_TOKEN and DUCKDNS_SUBDOMAIN" >&2
+                    exit 1
+                  else
+                    echo "duckdns: unexpected response (expected OK)" >&2
+                    exit 1
+                  fi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  cpu: 50m
+                  memory: 32Mi

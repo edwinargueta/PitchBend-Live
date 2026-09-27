@@ -1,0 +1,50 @@
+# ONE-TIME, CLUSTER-WIDE bootstrap for k3s's bundled Traefik (ADR 0003).
+#
+# This is NOT part of infra/k8s and deploy.sh never applies it. It configures
+# the Traefik instance that every app on this cluster shares, including the
+# Sudoku Solver (namespace sudoku-prod), so it's applied by hand, once, with
+# the user's sign-off (CLAUDE.md "Ask the user before you act").
+#
+# What it changes, and why KeyShift needs it:
+#   - service.spec.externalTrafficPolicy: Local
+#       Keeps the real client IP. With the default (Cluster), k3s ServiceLB
+#       SNATs traffic, so X-Forwarded-For carries a cluster IP and every user
+#       shares one rate-limit bucket (ARCHITECTURE.md §3.3; matters from Phase 1).
+#       Safe on a single node: the only Traefik pod is always local.
+#   - web/websecure readTimeout: 300s (Traefik v3 default: 60s)
+#       readTimeout covers reading the whole request, body included, so a 50 MB
+#       upload on a slow uplink (< ~7 Mbit/s) would be cut off at 60 s.
+#       300 s covers 55 MB down to ~1.5 Mbit/s.
+# Effect on Sudoku: its pods also see real client IPs, and its requests get
+# the same longer read timeout. Neither changes its behavior.
+#
+# Before applying, check whether a HelmChartConfig already exists. Applying
+# this file REPLACES its valuesContent, so merge any existing values first:
+#   kubectl -n kube-system get helmchartconfig traefik -o yaml
+#
+# Apply (k3s's helm-controller then upgrades Traefik; expect a few seconds of
+# ingress downtime for BOTH apps while the Traefik pod restarts):
+#   kubectl apply -f infra/k8s-bootstrap/traefik-config.yaml
+#   kubectl -n kube-system rollout status deploy/traefik
+#   kubectl -n kube-system get svc traefik -o jsonpath='{.spec.externalTrafficPolicy}{"\n"}'   # Local
+#
+# Undo: kubectl -n kube-system delete helmchartconfig traefik  (Traefik returns to k3s defaults)
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      spec:
+        externalTrafficPolicy: Local
+    ports:
+      web:
+        transport:
+          respondingTimeouts:
+            readTimeout: 300s
+      websecure:
+        transport:
+          respondingTimeouts:
+            readTimeout: 300s

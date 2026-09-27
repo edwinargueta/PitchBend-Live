@@ -1,0 +1,146 @@
+# FastAPI (uvicorn) on :8000. Image: infra/docker/api.Dockerfile, uid/gid 10001.
+# The tag is set at deploy time by infra/scripts/deploy.sh; the placeholder tag
+# below makes a bare `kubectl apply -k` fail with ImagePullBackOff instead of
+# silently running `latest`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: keyshift
+spec:
+  # SQLite has ONE writer (CLAUDE.md §5, ARCHITECTURE.md §9 task 5): api and
+  # worker both write it. Never scale past 1, and Recreate (not RollingUpdate)
+  # so the old and new pods never both have the DB open during a rollout.
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api
+        app.kubernetes.io/part-of: keyshift
+    spec:
+      automountServiceAccountToken: false
+      # Don't inject <SERVICE>_PORT=tcp://... env vars for every Service in the
+      # namespace; they can collide with real config keys.
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        # Volume root is group-owned by 10001 so the init container can create
+        # the /data layout. OnRootMismatch skips the recursive chown on restarts.
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Creates the §6.1 layout on a fresh PVC (same init container as worker.yaml).
+        #   /data/media 0755: web runs as uid 101 (not in group 10001) and must
+        #     read it, so media files must also be world-readable (0644).
+        #   /data/db    0750: web mounts the whole PVC read-only, so keep it from
+        #     reading SQLite at the filesystem level too, not only via nginx.conf.
+        - name: init-data-dirs
+          image: ghcr.io/edwinargueta/keyshift-api:set-by-deploy-sh
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - mkdir -p /data/media /data/db && chmod 0755 /data/media && chmod 0750 /data/db
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: api
+          image: ghcr.io/edwinargueta/keyshift-api:set-by-deploy-sh
+          imagePullPolicy: IfNotPresent
+          # No command: the image CMD runs uvicorn with --proxy-headers.
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: keyshift-config
+            - secretRef:
+                name: keyshift-secrets
+          env:
+            # Real client IP for rate limiting (CLAUDE.md §5, ARCHITECTURE.md §3.3).
+            # uvicorn trusts X-Forwarded-For only from these peers, i.e. the
+            # Ingress controller pods. It MUST cover the cluster's pod CIDR:
+            # run infra/scripts/check-cluster.sh, which prints each node's
+            # spec.podCIDR and compares it with this value. 10.42.0.0/16 is the
+            # k3s default. This is the one place to change it.
+            - name: FORWARDED_ALLOW_IPS
+              value: "10.42.0.0/16"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: keyshift-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: keyshift
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

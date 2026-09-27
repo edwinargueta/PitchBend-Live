@@ -1,0 +1,111 @@
+# KeyShift local development (D17, ADR 0001). Production runs from infra/k8s/, never from this file.
+#
+# The host needs only Docker + git. From the repo root:
+#   docker compose -f infra/docker-compose.dev.yml up --build     # app at http://localhost:5173
+#   docker compose -f infra/docker-compose.dev.yml run --rm api uv run pytest
+#   docker compose -f infra/docker-compose.dev.yml run --rm web pnpm test
+#   docker compose -f infra/docker-compose.dev.yml down -v        # stop and wipe local data
+#
+# Images are built locally from the `dev` targets of the same Dockerfiles CI uses for production.
+# Locally built images are never pushed or deployed. Config uses the §6.2 keys: settings default
+# to the §6.2 values, and an optional apps/api/.env (git-ignored) overrides them at runtime.
+# Never pass secrets as build args.
+
+name: keyshift
+
+x-api-common: &api-common
+  build:
+    context: ..
+    dockerfile: infra/docker/api.Dockerfile
+    target: dev
+  image: keyshift-api:dev
+  env_file:
+    - path: ../apps/api/.env
+      required: false
+  environment:
+    # Bind-mount file events are unreliable on macOS; poll instead.
+    WATCHFILES_FORCE_POLLING: "true"
+  volumes:
+    - ../apps/api:/app
+    - keyshift-data:/data
+
+services:
+  api:
+    <<: *api-common
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    <<: *api-common
+    command: ["arq", "--watch", "keyshift", "keyshift.worker.WorkerSettings"]
+    depends_on:
+      valkey:
+        condition: service_healthy
+      # Started after api so api's image seeds the fresh named volume with /data/{media,db}
+      # owned by uid 10001.
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "arq", "--check", "keyshift.worker.WorkerSettings"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  valkey:
+    # Same pinned image and flags as infra/k8s/valkey.yaml: no persistence (D5).
+    image: valkey/valkey:9.1.2-trixie
+    command: ["valkey-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Serves /media exactly as production does: the same nginx image and the real
+  # infra/docker/nginx.conf, reading the shared data volume read-only. Vite proxies /media here.
+  media:
+    image: nginxinc/nginx-unprivileged:1.30.5-alpine3.24
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - keyshift-data:/data:ro
+    depends_on:
+      api:
+        condition: service_started
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/web.Dockerfile
+      target: dev
+    image: keyshift-web:dev
+    init: true  # `run --rm web pnpm …` makes pnpm PID 1, and pnpm doesn't forward SIGTERM
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      # vite.config.ts defaults to host-native `make dev`; inside Compose, listen on all
+      # interfaces (the port is still published to 127.0.0.1 only) and use service names.
+      DEV_SERVER_HOST: "0.0.0.0"
+      API_PROXY_TARGET: "http://api:8000"
+      MEDIA_PROXY_TARGET: "http://media:8080"
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - ../apps/web:/app
+      # Keep the image's node_modules instead of the host's (there is none). After changing
+      # dependencies, run `up --build -V` so this anonymous volume is recreated.
+      - /app/node_modules
+    depends_on:
+      - api
+      - media
+
+volumes:
+  keyshift-data:

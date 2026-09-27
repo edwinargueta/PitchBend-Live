@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+*.tsbuildinfo
+*.local
+*.log
+
+# Never commit env files (repo and images are public).
+.env
+.env.*

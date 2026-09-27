@@ -1,0 +1,71 @@
+# FRAGILE: read before editing (CLAUDE.md §8, ARCHITECTURE.md §9 task 7, §14).
+# Any change to this file must keep:
+#   - response buffering OFF, or SSE progress silently freezes until the job ends
+#   - long read/send timeouts (3600 s), or SSE streams get cut off
+#   - request bodies of at least 55 MB allowed, or 50 MB uploads fail with 413
+# and must be re-verified against the live cluster with:
+#   curl -N https://<host>/api/health/stream   # 5 ticks ~1 s apart, not all at the end
+#   a 50 MB POST that must not get a 413 from the Ingress
+#
+# The cluster runs k3s's bundled Traefik, shared with the Sudoku Solver app
+# (namespace sudoku-prod; ADR 0003):
+#   - Traefik streams responses without buffering and has no request-body limit
+#     unless a Buffering middleware is attached, so never attach one.
+#   - Traefik v3's entrypoint readTimeout (60 s by default) covers reading the
+#     whole request body. infra/k8s-bootstrap/traefik-config.yaml raises it to
+#     300 s so slow 50 MB uploads aren't cut off.
+#   - The nginx.ingress.kubernetes.io/* annotations below do nothing on Traefik.
+#     They stay so the file remains safe if the controller ever changes to
+#     ingress-nginx (§9 task 7).
+#
+# The host below is a placeholder: kustomization.yaml's `replacements:` copies
+# PUBLIC_HOST from the keyshift-config ConfigMap into both host fields. Always
+# apply via kustomize (deploy.sh), never this file alone.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keyshift
+  labels:
+    app.kubernetes.io/name: keyshift
+    app.kubernetes.io/part-of: keyshift
+  annotations:
+    # cert-manager issues the Let's Encrypt certificate into the keyshift-tls Secret.
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # ingress-nginx only (inactive on Traefik; kept for portability):
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "55m"
+spec:
+  # Explicit, matching the Sudoku Ingress and the shared letsencrypt-prod
+  # ClusterIssuer's HTTP-01 solver (class traefik).
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - public-host.placeholder.invalid
+      secretName: keyshift-tls
+  rules:
+    - host: public-host.placeholder.invalid
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+          - path: /media
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 8080
