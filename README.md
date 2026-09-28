@@ -217,7 +217,7 @@ Any change to `ingress.yaml` must keep these properties and be re-verified with 
 
 ## Known limitations
 
-- YouTube often blocks datacenter IPs such as Oracle's. When that happens, PitchBend Live says so and suggests uploading the file instead. YouTube ingest is covered by tests with a mocked yt-dlp; the first real fetch happens on the VM.
+- YouTube often blocks datacenter IPs such as Oracle's. When that happens, PitchBend Live says so and suggests uploading the file instead. YouTube ingest is covered by tests with a mocked yt-dlp; the first real fetch happens on the VM. On the first deploy, YouTube did block the VM. [ADR 0008](docs/adr/0008-youtube-relay-through-home-raspberry-pi.md) proposes a fix (not built) that routes only YouTube downloads through a Raspberry Pi at home.
 - `make dev` needs `ffmpeg` on your machine for uploads (`brew install ffmpeg`), whereas `make up` needs nothing extra.
 - The engine keeps about 2× the decoded song in memory (≈ 170 MB for 4 minutes), which can be tight on old phones.
 - Playback needs a browser that decodes AAC and runs WebAssembly in an AudioWorklet. Embedded browsers such as VS Code's built-in browser (Chromium without proprietary codecs) can't decode AAC, and hardened setups (Chromium `--jitless`, Edge's enhanced security, Safari's Lockdown Mode, some managed-browser policies) turn WebAssembly off. The player then says so and suggests Chrome, Safari or Firefox; its "Technical details" hold the raw error for bug reports.

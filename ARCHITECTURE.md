@@ -629,7 +629,7 @@ Trade-offs, follow-up work, risks.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| YouTube blocks the Oracle datacenter IP | URL input fails | Clear `SOURCE_BLOCKED` UX, upload path, keep yt-dlp updated (weekly Dependabot PR bumps yt-dlp; merging ships a new SHA-tagged image, ADR 0006). Avoid using personal account cookies on the server. |
+| YouTube blocks the Oracle datacenter IP | URL input fails | Clear `SOURCE_BLOCKED` UX, upload path, keep yt-dlp updated (weekly Dependabot PR bumps yt-dlp; merging ships a new SHA-tagged image, ADR 0006). Avoid using personal account cookies on the server. Confirmed on the first deploy; a relay through a Raspberry Pi at home is proposed, not adopted, in [ADR 0008](docs/adr/0008-youtube-relay-through-home-raspberry-pi.md). |
 | YouTube ToS | Takedown / blocking | Personal-practice framing, 24 h retention, random media names, no public library, upload-first messaging |
 | Oracle reclaims idle instance | Downtime | Uptime checks and real usage; the cluster is rebuildable from `infra/k8s/` |
 | ARM64 native dependency missing | Build failure | Check 3.4 before adopting; ADR for any new native dependency |
