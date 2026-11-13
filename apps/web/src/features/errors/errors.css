@@ -31,6 +31,11 @@
   display: none;
 }
 
+.error-panel__hint {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
 @media (max-width: 30rem) {
   .error-panel__actions .btn {
     flex: 1 1 100%;

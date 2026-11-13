@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ErrorCode } from "../../lib/types";
-import { ErrorPanel } from "./ErrorPanel";
+import { ErrorPanel, EXTENSION_HINT } from "./ErrorPanel";
 
 vi.mock(
   "../../lib/errors",
@@ -69,6 +69,28 @@ describe("ErrorPanel", () => {
       screen.queryByRole("button", { name: /Try again/ }),
     ).not.toBeInTheDocument();
   });
+
+  it("SOURCE_BLOCKED also mentions the Chrome extension, after the upload action (AC-14)", () => {
+    setup("SOURCE_BLOCKED");
+    const hint = screen.getByText(EXTENSION_HINT);
+    expect(hint).toHaveTextContent("Chrome extension");
+    const upload = screen.getByRole("button", {
+      name: "Upload the file instead",
+    });
+    expect(upload).toHaveClass("btn--primary");
+    expect(
+      upload.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("alert")).not.toHaveTextContent("Chrome extension");
+  });
+
+  it.each(codes.filter((code) => code !== "SOURCE_BLOCKED"))(
+    "%s doesn't show the extension hint (AC-14)",
+    (code) => {
+      setup(code);
+      expect(screen.queryByText(EXTENSION_HINT)).not.toBeInTheDocument();
+    },
+  );
 
   it("RATE_LIMITED shows the retry time and enables retry when it's up", () => {
     vi.useFakeTimers();

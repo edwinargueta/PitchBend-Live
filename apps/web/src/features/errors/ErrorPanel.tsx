@@ -18,6 +18,14 @@ interface ErrorPanelProps {
 
 const RETRYABLE = new Set<ErrorCode>(["RATE_LIMITED", "INTERNAL"]);
 
+/**
+ * ADR 0009: the Chrome extension transposes the YouTube video in the page,
+ * so YouTube's blocking of the server doesn't apply to it. Secondary to
+ * uploading, which stays the primary action (CLAUDE.md §7).
+ */
+export const EXTENSION_HINT =
+  "Watching in Chrome on a computer? The PitchBend Live Chrome extension transposes the YouTube video as it plays, with nothing to fetch.";
+
 /** Every §6.6 code gets friendly, actionable copy (§1 goal 4, §10 C7). */
 export function ErrorPanel({
   error,
@@ -82,6 +90,9 @@ export function ErrorPanel({
           </button>
         )}
       </div>
+      {error.code === "SOURCE_BLOCKED" && (
+        <p className="error-panel__hint">{EXTENSION_HINT}</p>
+      )}
     </section>
   );
 }
