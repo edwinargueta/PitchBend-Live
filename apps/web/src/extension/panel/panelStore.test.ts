@@ -152,6 +152,63 @@ describe("PanelStore", () => {
     });
   });
 
+  it("should show a command at once, so quick presses add up", async () => {
+    const { store, sendMessage } = connect();
+    await settled(store, "ready");
+    const replies: ((value: unknown) => void)[] = [];
+    sendMessage.mockImplementation(
+      () => new Promise((resolve) => replies.push(resolve)),
+    );
+    store.send({ type: "nudge", delta: 1 });
+    store.send({ type: "nudge", delta: 1 });
+    expect(store.getView()).toMatchObject({
+      status: { settings: { semitones: 2 } },
+    });
+    expect(sendMessage).toHaveBeenLastCalledWith(4, {
+      type: "nudge",
+      delta: 1,
+      sentAt: 77,
+    });
+    replies[1]?.(status(2));
+    await vi.waitFor(() => {
+      expect(store.getView()).toMatchObject({
+        status: { settings: { semitones: 2 } },
+      });
+    });
+  });
+
+  it("should keep pending settings when a push arrives mid-request", async () => {
+    const { store, sendMessage, onMessage } = connect();
+    await settled(store, "ready");
+    let reply: (value: unknown) => void = () => undefined;
+    sendMessage.mockImplementationOnce(
+      () => new Promise((resolve) => (reply = resolve)),
+    );
+    store.send({ type: "set", semitones: 4 });
+    onMessage.emit(
+      { type: "status", status: { ...status(1), state: "active" } },
+      { tab: { id: 4 } },
+      vi.fn(),
+    );
+    expect(store.getView()).toMatchObject({
+      status: { state: "active", settings: { semitones: 4 } },
+    });
+    reply({ ...status(4), state: "active" });
+    await vi.waitFor(() => {
+      expect(store.getView()).toMatchObject({
+        status: { state: "active", settings: { semitones: 4 } },
+      });
+    });
+    onMessage.emit(
+      { type: "status", status: status(6) },
+      { tab: { id: 4 } },
+      vi.fn(),
+    );
+    expect(store.getView()).toMatchObject({
+      status: { settings: { semitones: 6 } },
+    });
+  });
+
   it("should follow status pushes from its own tab only", async () => {
     const { store, onMessage } = connect();
     await settled(store, "ready");

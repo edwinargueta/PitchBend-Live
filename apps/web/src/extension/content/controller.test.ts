@@ -20,6 +20,8 @@ interface SetupOptions {
   ctxState?: AudioContextState;
   resume?: "run" | "stay" | "reject";
   failShifter?: boolean;
+  /** Leave restore() to the test (by default it runs with nothing saved). */
+  fresh?: boolean;
 }
 
 function setup(options: SetupOptions = {}) {
@@ -57,6 +59,10 @@ function setup(options: SetupOptions = {}) {
     log,
   };
   const controller = new ContentController(deps);
+  if (!options.fresh) {
+    controller.restore(null);
+    published.length = 0;
+  }
   const last = (): TabStatus => {
     const status = published.at(-1);
     if (!status) throw new Error("nothing published");
@@ -314,11 +320,36 @@ describe("ContentController changes while attached", () => {
 
 describe("ContentController.restore (FR-7)", () => {
   it("should apply saved settings and attach when they transpose", async () => {
-    const { controller, settle, last } = setup();
+    const { controller, settle, last } = setup({ fresh: true });
     controller.setVideo(video());
     controller.restore({ semitones: 3, bypass: false, key: G_MAJOR });
     await settle("active");
     expect(last().settings.key).toEqual(G_MAJOR);
+  });
+
+  it("should publish nothing until restored, so defaults can't overwrite the save", () => {
+    const { controller, published, last } = setup({ fresh: true });
+    controller.setVideo(video());
+    controller.videoChanged();
+    expect(published).toHaveLength(0);
+    controller.restore(null);
+    expect(published).toHaveLength(1);
+    expect(last().settings).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it("should keep a command that arrived before the saved settings", () => {
+    const { controller, last } = setup({ fresh: true, activation: false });
+    controller.setVideo(video());
+    controller.handle({ type: "set", semitones: 2 });
+    controller.restore({ semitones: 5, bypass: false, key: null });
+    expect(last().settings.semitones).toBe(2);
+    expect(last().state).toBe("waiting-gesture");
+  });
+
+  it("should restore only once", () => {
+    const { controller } = setup();
+    controller.restore({ semitones: 5, bypass: false, key: null });
+    expect(controller.status().settings).toEqual(DEFAULT_SETTINGS);
   });
 });
 
@@ -342,7 +373,7 @@ describe("createMessageListener", () => {
 
 describe("restoreSettings", () => {
   it("should restore valid saved settings", async () => {
-    const { controller } = setup();
+    const { controller } = setup({ fresh: true });
     const runtime = {
       sendMessage: vi.fn(() =>
         Promise.resolve({ semitones: -2, bypass: true, key: null }),
@@ -362,18 +393,20 @@ describe("restoreSettings", () => {
     });
   });
 
-  it("should ignore missing settings", async () => {
-    const { controller, published } = setup();
+  it("should start publishing the defaults when nothing was saved", async () => {
+    const { controller, published } = setup({ fresh: true });
     await restoreSettings(
       { sendMessage: () => Promise.resolve(undefined) },
       controller,
       { warn: vi.fn(), error: vi.fn() },
     );
-    expect(published).toHaveLength(0);
+    expect(published).toEqual([
+      expect.objectContaining({ state: "idle", settings: DEFAULT_SETTINGS }),
+    ]);
   });
 
-  it("should log when the worker can't answer", async () => {
-    const { controller } = setup();
+  it("should log and still start publishing when the worker can't answer", async () => {
+    const { controller, published } = setup({ fresh: true });
     const log = { warn: vi.fn(), error: vi.fn() };
     await restoreSettings(
       { sendMessage: () => Promise.reject(new Error("no worker")) },
@@ -381,6 +414,7 @@ describe("restoreSettings", () => {
       log,
     );
     expect(log.warn).toHaveBeenCalled();
+    expect(published).toHaveLength(1);
   });
 });
 

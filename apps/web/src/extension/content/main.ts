@@ -42,7 +42,11 @@ function main(): void {
     site: siteOf(location.hostname),
     createContext: () => new AudioContext({ latencyHint: "interactive" }),
     createGraph: (ctx) => new LiveGraph(ctx, startNode),
-    hasActivation: () => navigator.userActivation.hasBeenActive,
+    // Probe only: Playwright's page.evaluate counts as a user gesture, so the
+    // e2e suite simulates a page that hasn't been clicked yet.
+    hasActivation: () =>
+      !(PROBE && document.documentElement.dataset.pblProbeNoActivation) &&
+      navigator.userActivation.hasBeenActive,
     onGesture: (callback) => onPageGesture(window, callback),
     publish: (status) => {
       runtime

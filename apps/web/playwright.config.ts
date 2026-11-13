@@ -3,6 +3,8 @@
 //    against a harness page this config serves itself (see webServer).
 //  - app-chromium: the full-stack happy path (e2e/*.spec.ts outside engine/),
 //    only when E2E_BASE_URL points at a running stack.
+//  - extension-chromium: the Chrome extension (e2e/extension), only when
+//    PW_EXTENSION_DIR points at a built extension.
 //
 // Environment:
 //  PW_BROWSERS          engine browsers, default "chromium,firefox,webkit"
@@ -10,6 +12,7 @@
 //  ENGINE_HARNESS_PORT  harness port (default 4317)
 //  ENGINE_HARNESS_MODE  "preview" (default: production build) or "dev"
 //  E2E_BASE_URL         enables the app project against that URL
+//  PW_EXTENSION_DIR     enables the extension project with that unpacked build
 //  CI                   retries, forbid .only, HTML report
 //
 // Artifacts go under node_modules/.cache/playwright (git-, docker- and
@@ -49,6 +52,17 @@ const projects: Project[] = engineBrowsers.map((name) => ({
   testDir: "./e2e/engine",
   use: { ...devices[browserDevices[name] ?? ""], baseURL: harnessUrl },
 }));
+
+// The Chrome extension (ADR 0009): its spec launches its own persistent
+// Chromium with the unpacked build in PW_EXTENSION_DIR, so the project needs
+// no browser settings. `pnpm test:e2e:extension` builds it and sets this.
+if (env("PW_EXTENSION_DIR")) {
+  projects.push({
+    name: "extension-chromium",
+    testDir: "./e2e/extension",
+    timeout: 120_000,
+  });
+}
 
 const appBaseUrl = env("E2E_BASE_URL");
 if (appBaseUrl) {

@@ -11,6 +11,10 @@
 // that it stays for the life of the page (liveGraph.ts explains why); going
 // back to 0 or bypassing just fades to the dry path, so "Original" really is
 // the original audio, with no added delay.
+//
+// Nothing is published until restore() has run: the worker saves every
+// published status for the tab, so a fresh page's defaults would otherwise
+// overwrite the settings it is about to restore after a reload (FR-7).
 import type { Logger } from "../shared/log";
 import {
   isCommand,
@@ -57,6 +61,9 @@ export class ContentController {
   private appliedAt: number | null = null;
   private sentAt: number | null = null;
   private cancelGesture: (() => void) | null = null;
+  private restored = false;
+  /** A command arrived before restore(): it is newer than anything saved. */
+  private commanded = false;
 
   constructor(deps: ControllerDeps) {
     this.deps = deps;
@@ -83,17 +90,27 @@ export class ContentController {
   /** Apply a command from the panel or a shortcut; returns the new status. */
   handle(cmd: Command): TabStatus {
     if (cmd.type === "getStatus") return this.status();
+    this.commanded = true;
     const before = this.settings;
     this.settings = applyCommand(before, cmd);
     this.sync(before, cmd.sentAt ?? null);
     return this.status();
   }
 
-  /** Settings saved for this tab before a reload (FR-7). */
-  restore(settings: TabSettings): void {
-    const before = this.settings;
-    this.settings = settings;
-    this.sync(before, null);
+  /**
+   * Settings saved for this tab before a reload (FR-7), or null when there
+   * are none. Runs once; publishing starts here.
+   */
+  restore(settings: TabSettings | null): void {
+    if (this.restored) return;
+    this.restored = true;
+    if (settings && !this.commanded) {
+      const before = this.settings;
+      this.settings = settings;
+      this.sync(before, null);
+      return;
+    }
+    this.publish();
   }
 
   /** The tracker found a (different) main video, or lost it. */
@@ -246,6 +263,7 @@ export class ContentController {
   }
 
   private publish(): void {
+    if (!this.restored) return;
     this.deps.publish(this.status());
   }
 }
@@ -276,10 +294,11 @@ export async function restoreSettings(
     saved = await runtime.sendMessage({ type: "restoreRequest" });
   } catch (cause) {
     log.warn("Couldn't read this tab's saved settings.", cause);
+    controller.restore(null);
     return;
   }
   const settings = parseSettings(saved);
-  if (settings !== DEFAULT_SETTINGS) controller.restore(settings);
+  controller.restore(settings === DEFAULT_SETTINGS ? null : settings);
 }
 
 /**

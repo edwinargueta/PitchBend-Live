@@ -4,6 +4,10 @@
 // opens the panel as a normal page). An external store read with
 // useSyncExternalStore: all chrome I/O lives here, so Panel stays
 // presentational and this is testable without React.
+//
+// Commands apply to the view at once (optimistically), and the tab's reply
+// then confirms them. The dial is a controlled input: without this, two
+// quick key presses both read the old value and the second step is lost.
 import type { PanelChrome, TabInfo } from "../shared/chromePorts";
 import {
   isStatusMessage,
@@ -12,6 +16,7 @@ import {
   type Command,
   type TabStatus,
 } from "../shared/protocol";
+import { applyCommand } from "../shared/tabState";
 
 export type PanelView =
   | { readonly kind: "loading" }
@@ -44,6 +49,8 @@ export class PanelStore {
   private view: PanelView = { kind: "loading" };
   /** Only the newest request may change the view (replies can arrive out of order). */
   private seq = 0;
+  /** Requests awaiting a reply: until then the view's settings are ours. */
+  private inFlight = 0;
 
   constructor(chrome: PanelChrome, override: number | null, now: () => number) {
     this.chrome = chrome;
@@ -66,11 +73,25 @@ export class PanelStore {
   readonly send = (command: Command): void => {
     const tabId = tabIdOf(this.view);
     if (tabId === null) return;
-    const stamped: Command =
-      command.type === "getStatus"
-        ? command
-        : { ...command, sentAt: this.now() };
-    void this.ask(tabId, stamped, ++this.seq);
+    const seq = ++this.seq;
+    if (command.type === "getStatus") {
+      void this.ask(tabId, command, seq);
+      return;
+    }
+    if (this.view.kind === "ready") {
+      const { status } = this.view;
+      this.set(
+        {
+          ...this.view,
+          status: {
+            ...status,
+            settings: applyCommand(status.settings, command),
+          },
+        },
+        seq,
+      );
+    }
+    void this.ask(tabId, { ...command, sentAt: this.now() }, seq);
   };
 
   /** Re-resolve the target tab and read its status. */
@@ -105,12 +126,19 @@ export class PanelStore {
   ): undefined => {
     const tabId = tabIdOf(this.view);
     if (
-      isStatusMessage(message) &&
-      tabId !== null &&
-      sender.tab?.id === tabId
+      !isStatusMessage(message) ||
+      tabId === null ||
+      sender.tab?.id !== tabId
     ) {
-      this.set({ kind: "ready", tabId, status: message.status }, this.seq);
+      return undefined;
     }
+    // A push may predate a command still in flight: take its state, but keep
+    // the settings the reply is about to confirm.
+    const status =
+      this.inFlight > 0 && this.view.kind === "ready"
+        ? { ...message.status, settings: this.view.status.settings }
+        : message.status;
+    this.set({ kind: "ready", tabId, status }, this.seq);
     return undefined;
   };
 
@@ -148,6 +176,7 @@ export class PanelStore {
     seq: number,
   ): Promise<void> {
     let view: PanelView;
+    this.inFlight++;
     try {
       const status = await this.chrome.tabs.sendMessage(tabId, command);
       view = isTabStatus(status)
@@ -157,6 +186,8 @@ export class PanelStore {
       // No content script in the tab (opened before install or update):
       // shown as "reload this tab".
       view = { kind: "no-receiver", tabId };
+    } finally {
+      this.inFlight--;
     }
     this.set(view, seq);
   }

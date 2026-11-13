@@ -111,6 +111,18 @@ jobs:
             -e CI=1 -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 -e PNPM_CONFIG_STORE_DIR=/tmp/pnpm-store mcr.microsoft.com/playwright:v1.63.0-noble \
             bash -c "corepack pnpm install --frozen-lockfile && corepack pnpm run test:e2e:engine"
 
+  # The Chrome extension (ADR 0009): the unpacked build in headless Chromium against a
+  # fixture served as YouTube with YouTube's CSP (offline; no real YouTube, no stack).
+  extension-browser:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Extension e2e (Playwright 1.63.0 image)
+        run: |
+          docker run --rm --init --shm-size=1g -v "$PWD":/work -w /work/apps/web \
+            -e CI=1 -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 -e PNPM_CONFIG_STORE_DIR=/tmp/pnpm-store mcr.microsoft.com/playwright:v1.63.0-noble \
+            bash -c "corepack pnpm install --frozen-lockfile && corepack pnpm run test:e2e:extension"
+
   # §10 C9: the one full-stack happy path (upload → play → +2 → export) against the
   # real Compose stack, built from the same dev images as the jobs above.
   e2e:

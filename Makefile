@@ -34,7 +34,7 @@ PNPM := COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm
 
 .PHONY: help setup setup-api setup-web dev dev-check dev-deps dev-api dev-worker dev-web \
         dev-stop build up up-d down reset logs ps test test-api test-web lint fmt check \
-        validate manifests images test-browser e2e api-shell web-shell api-run web-run check-cluster \
+        validate manifests images test-browser test-extension extension e2e api-shell web-shell api-run web-run check-cluster \
         deploy clean
 
 help:
@@ -55,6 +55,8 @@ help:
 	@echo "  check     - everything CI runs: lint, test and validate"
 	@echo "  validate  - render and validate the K8s manifests, offline (manifests prints them)"
 	@echo "  test-browser - the audio engine on real Web Audio (Chromium, Firefox, WebKit)"
+	@echo "  test-extension - the Chrome extension unpacked in Chromium, on a fixture served as YouTube"
+	@echo "  extension - build the Chrome extension into apps/web/dist-extension (Load unpacked from there)"
 	@echo "  e2e       - full-stack happy path in Chromium against a running make up-d"
 	@echo "  images    - build the production images locally at :$(IMAGE_TAG) (never pushed)"
 	@echo "Containers:"
@@ -177,6 +179,15 @@ PW_IMAGE   := mcr.microsoft.com/playwright:v1.63.0-noble
 # The audio engine on real Web Audio in Chromium, Firefox and WebKit (no stack needed).
 test-browser:
 	$(PLAYWRIGHT) $(PW_IMAGE) bash -c "corepack pnpm install --frozen-lockfile >/dev/null && corepack pnpm run test:e2e:engine"
+
+# The Chrome extension (ADR 0009): the unpacked probe build in Chromium, against a fixture
+# served as www.youtube.com / music.youtube.com with YouTube's CSP. Offline, no stack needed.
+test-extension:
+	$(PLAYWRIGHT) $(PW_IMAGE) bash -c "corepack pnpm install --frozen-lockfile >/dev/null && corepack pnpm run test:e2e:extension"
+
+# The Chrome extension for chrome://extensions → Load unpacked → apps/web/dist-extension.
+extension:
+	$(COMPOSE) run --rm --no-deps web pnpm run build:extension
 
 # The full-stack happy path (upload, play, +2, export) against a running `make up-d`.
 e2e:
