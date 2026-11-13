@@ -71,6 +71,26 @@ export class FakeStretch extends FakeNode {
   }
 }
 
+export class FakeAnalyser extends FakeNode {
+  fftSize = 2048;
+  smoothingTimeConstant = 0.8;
+  /** The bin that getFloatFrequencyData reports as the peak (-1: silence). */
+  peakBin = 100;
+
+  get frequencyBinCount(): number {
+    return this.fftSize / 2;
+  }
+
+  readonly getFloatFrequencyData = vi.fn((bins: Float32Array) => {
+    bins.fill(-120);
+    if (this.peakBin >= 0) {
+      bins[this.peakBin - 1] = -30;
+      bins[this.peakBin] = -10;
+      bins[this.peakBin + 1] = -30;
+    }
+  });
+}
+
 export class FakeContext {
   state: AudioContextState;
   currentTime = 1;
@@ -87,6 +107,12 @@ export class FakeContext {
     const gain = new FakeGain();
     this.gains.push(gain);
     return gain;
+  });
+  readonly analysers: FakeAnalyser[] = [];
+  readonly createAnalyser = vi.fn(() => {
+    const analyser = new FakeAnalyser();
+    this.analysers.push(analyser);
+    return analyser;
   });
   readonly createMediaElementSource = vi.fn((element: unknown) => {
     if (this.throwOnSource !== null) {

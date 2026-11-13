@@ -47,6 +47,8 @@ export default defineConfig({
         "src/test/**",
         "src/**/testing/**",
         "src/main.tsx",
+        // Extension entry files only wire chrome.* to tested modules (ADR 0009).
+        "src/extension/**/main.{ts,tsx}",
       ],
       thresholds: { statements: 90, branches: 85, functions: 90, lines: 90 },
     },

@@ -208,6 +208,16 @@ describe("LiveGraph.setBypass (AC-7)", () => {
   });
 });
 
+describe("LiveGraph.tap", () => {
+  it("should feed both paths to the tap", () => {
+    const { ctx, graph } = setup();
+    const tap = {} as AudioNode;
+    graph.tap(tap);
+    expect(ctx.dry.connections).toContain(tap);
+    expect(ctx.wet.connections).toContain(tap);
+  });
+});
+
 describe("LiveGraph.dispose", () => {
   it("should be safe before the shifter starts", () => {
     const { graph } = setup();

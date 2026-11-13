@@ -128,6 +128,12 @@ export class LiveGraph {
     this.applyMix();
   }
 
+  /** Also feed the graph's output to `target` (the e2e probe's analyser). */
+  tap(target: AudioNode): void {
+    this.dry.connect(target);
+    this.wet.connect(target);
+  }
+
   /** Stop any pending ramp timers. The graph itself stays up (see header). */
   dispose(): void {
     this.shifter?.ramp.cancel();
