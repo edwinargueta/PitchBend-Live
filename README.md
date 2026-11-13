@@ -14,12 +14,15 @@ It's built to run at **$0/month** on a single Oracle Always-Free Ampere A1 (arm6
 - **Export:** download the transposed WAV, named after the new key.
 - Songs are deleted after 24 hours.
 
+**Chrome extension (YouTube, live):** when YouTube blocks the server, the [PitchBend Live Chrome extension](apps/web/src/extension/README.md) transposes the YouTube or YouTube Music video you're watching, in the page, as it plays. Nothing is downloaded or sent. Build it with `make extension`, then *Load unpacked* from `apps/web/dist-extension` ([ADR 0009](docs/adr/0009-chrome-extension-live-transpose.md)).
+
 | Doc | What it's for |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Full design, contracts (§6), phase plan |
 | [`docs/architecture-diagram.md`](docs/architecture-diagram.md) | Mermaid diagrams of the topology, request flows, and pipeline |
 | [`CLAUDE.md`](CLAUDE.md) | Guardrails for anyone (human or agent) working in the repo |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
+| [`apps/web/src/extension/README.md`](apps/web/src/extension/README.md) | The Chrome extension: build, load, shortcuts, manual checklist |
 
 ---
 
@@ -209,6 +212,7 @@ Any change to `ingress.yaml` must keep these properties and be re-verified with 
   - **api:** ruff, mypy `--strict`, and pytest with coverage. §10 requires ≥ 80% for `routes/`, `audio/` and `worker/`; they are at 100%. The rate-limit Lua tests run against a Valkey service.
   - **web:** ESLint, Prettier, tsc, and Vitest, with coverage thresholds.
   - **engine-browser:** the audio engine on real Web Audio in Chromium, Firefox and WebKit.
+  - **extension-browser:** the Chrome extension, unpacked in Chromium, on an offline fixture served as YouTube with YouTube's CSP.
   - **e2e:** the Compose stack plus the Playwright happy path.
   - **manifests:** Kustomize, kubeconform, the guardrails, and the shared URL table.
   Every check runs in the same `dev` images you use locally, on native arm64 runners. CI also builds the `prod` images without pushing them.
@@ -217,7 +221,7 @@ Any change to `ingress.yaml` must keep these properties and be re-verified with 
 
 ## Known limitations
 
-- YouTube often blocks datacenter IPs such as Oracle's. When that happens, PitchBend Live says so and suggests uploading the file instead. YouTube ingest is covered by tests with a mocked yt-dlp; the first real fetch happens on the VM. On the first deploy, YouTube did block the VM. [ADR 0008](docs/adr/0008-youtube-relay-through-home-raspberry-pi.md) proposes a fix (not built) that routes only YouTube downloads through a Raspberry Pi at home.
+- YouTube often blocks datacenter IPs such as Oracle's. When that happens, PitchBend Live says so and suggests uploading the file instead. YouTube ingest is covered by tests with a mocked yt-dlp; the first real fetch happens on the VM. On the first deploy, YouTube did block the VM. [ADR 0008](docs/adr/0008-youtube-relay-through-home-raspberry-pi.md) proposed routing YouTube downloads through a Raspberry Pi at home. [ADR 0009](docs/adr/0009-chrome-extension-live-transpose.md) supersedes it with the Chrome extension, which transposes YouTube in the page and fetches nothing.
 - `make dev` needs `ffmpeg` on your machine for uploads (`brew install ffmpeg`), whereas `make up` needs nothing extra.
 - The engine keeps about 2× the decoded song in memory (≈ 170 MB for 4 minutes), which can be tight on old phones.
 - Playback needs a browser that decodes AAC and runs WebAssembly in an AudioWorklet. Embedded browsers such as VS Code's built-in browser (Chromium without proprietary codecs) can't decode AAC, and hardened setups (Chromium `--jitless`, Edge's enhanced security, Safari's Lockdown Mode, some managed-browser policies) turn WebAssembly off. The player then says so and suggests Chrome, Safari or Firefox; its "Technical details" hold the raw error for bug reports.
