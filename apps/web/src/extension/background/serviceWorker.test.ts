@@ -6,7 +6,6 @@ import {
   forgetTab,
   handleShortcut,
   installPanelBehavior,
-  isYouTubeUrl,
   SHORTCUTS,
   storageKey,
 } from "./serviceWorker";
@@ -42,18 +41,6 @@ const status: TabStatus = {
   appliedAt: null,
   sentAt: null,
 };
-
-describe("isYouTubeUrl", () => {
-  it.each([
-    [WATCH, true],
-    ["https://music.youtube.com/watch?v=x", true],
-    ["https://www.youtube.com.evil.example/", false],
-    ["https://example.com/", false],
-    [undefined, false],
-  ])("%s → %s", (url, expected) => {
-    expect(isYouTubeUrl(url)).toBe(expected);
-  });
-});
 
 describe("handleShortcut (AC-11)", () => {
   it.each([...SHORTCUTS])(

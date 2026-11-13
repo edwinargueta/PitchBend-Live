@@ -14,6 +14,7 @@ import type {
 import {
   isRestoreRequest,
   isStatusMessage,
+  isYouTubeUrl,
   type Command,
   type TabSettings,
 } from "../shared/protocol";
@@ -30,19 +31,6 @@ export const SHORTCUTS: ReadonlyMap<string, ShortcutCommand> = new Map<
   ["transpose-reset", { type: "reset" }],
   ["toggle-bypass", { type: "toggleBypass" }],
 ]);
-
-/** The two origins in host_permissions and the content-script matches. */
-export const YOUTUBE_ORIGINS: readonly string[] = [
-  "https://www.youtube.com/",
-  "https://music.youtube.com/",
-];
-
-export function isYouTubeUrl(url: string | undefined): boolean {
-  return (
-    url !== undefined &&
-    YOUTUBE_ORIGINS.some((origin) => url.startsWith(origin))
-  );
-}
 
 export function storageKey(tabId: number): string {
   return `tab:${String(tabId)}`;

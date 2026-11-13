@@ -7,6 +7,7 @@ import {
   isStatusMessage,
   isTabSettings,
   isTabStatus,
+  isYouTubeUrl,
   preciseNow,
   type TabStatus,
 } from "./protocol";
@@ -148,5 +149,19 @@ describe("preciseNow", () => {
   it("should default to the global performance clock", () => {
     const before = performance.timeOrigin + performance.now();
     expect(preciseNow()).toBeGreaterThanOrEqual(before);
+  });
+});
+
+const WATCH = "https://www.youtube.com/watch?v=aaaaaaaaaaa";
+
+describe("isYouTubeUrl", () => {
+  it.each([
+    [WATCH, true],
+    ["https://music.youtube.com/watch?v=x", true],
+    ["https://www.youtube.com.evil.example/", false],
+    ["https://example.com/", false],
+    [undefined, false],
+  ])("%s → %s", (url, expected) => {
+    expect(isYouTubeUrl(url)).toBe(expected);
   });
 });

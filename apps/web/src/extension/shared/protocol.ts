@@ -156,6 +156,19 @@ export function isRestoreRequest(value: unknown): value is RestoreRequest {
   return isShape(value) && value.type === "restoreRequest";
 }
 
+/** The two origins in host_permissions and the content-script matches. */
+export const YOUTUBE_ORIGINS: readonly string[] = [
+  "https://www.youtube.com/",
+  "https://music.youtube.com/",
+];
+
+export function isYouTubeUrl(url: string | undefined): boolean {
+  return (
+    url !== undefined &&
+    YOUTUBE_ORIGINS.some((origin) => url.startsWith(origin))
+  );
+}
+
 /** A wall-clock timestamp comparable across extension documents (AC-2). */
 export function preciseNow(
   perf: Pick<Performance, "timeOrigin" | "now"> = performance,
