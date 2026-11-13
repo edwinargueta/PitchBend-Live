@@ -2,7 +2,7 @@
 
 # PitchBend Live for Chrome
 
-A Chrome extension that transposes the YouTube video you're watching, live, without changing its tempo. It taps the audio the page is already playing, shifts it in your browser, and plays the result. **Nothing is downloaded, saved, recorded or sent anywhere**: there are no network calls, no download permission and no persistent storage. That's how it gets around YouTube blocking the server (`SOURCE_BLOCKED`), because there's nothing to fetch. See [ADR 0009](../../../../docs/adr/0009-chrome-extension-live-transpose.md).
+A Chrome extension that transposes the YouTube video you're watching, live, without changing its tempo. It taps the audio the page is already playing, shifts it in your browser, and plays the result. **Nothing is downloaded, saved, recorded or sent anywhere**: there are no network calls, no download permission and no persistent storage. That's how it gets around YouTube blocking the server (`SOURCE_BLOCKED`), because there's nothing to fetch. See [ADR 0009](../../../../docs/adr/0009-chrome-extension-live-transpose.md) for the decision and the [system design](../../../../docs/chrome-extension-design.md) for how it works, with diagrams.
 
 - **Sites:** `www.youtube.com` and `music.youtube.com`.
 - **Transpose:** −12…+12 semitones, with pitch only. A 4:00 song still ends at 4:00.

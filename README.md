@@ -22,6 +22,7 @@ It's built to run at **$0/month** on a single Oracle Always-Free Ampere A1 (arm6
 | [`docs/architecture-diagram.md`](docs/architecture-diagram.md) | Mermaid diagrams of the topology, request flows, and pipeline |
 | [`CLAUDE.md`](CLAUDE.md) | Guardrails for anyone (human or agent) working in the repo |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
+| [`docs/chrome-extension-design.md`](docs/chrome-extension-design.md) | The Chrome extension's system design, with diagrams: audio graph, CSP loading, messaging, latency |
 | [`apps/web/src/extension/README.md`](apps/web/src/extension/README.md) | The Chrome extension: build, load, shortcuts, manual checklist |
 
 ---
