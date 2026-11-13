@@ -168,6 +168,18 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
 
 **Core principle:** the server fetches and analyzes each song **once**. All interactive pitch shifting happens **in the browser**. The server is never on the hot path of a dial move.
 
+**YouTube via the Chrome extension ([ADR 0009](docs/adr/0009-chrome-extension-live-transpose.md)):** for YouTube, the server fetches nothing. A Manifest V3 extension routes the playing `<video>` on `www.youtube.com` / `music.youtube.com` through the same Signalsmith Stretch worklet, live, in the user's tab:
+
+```
+ YouTube tab (user's Chrome)
+ ├─ content script: <video> → MediaElementSource → dry gain ──────────────┐
+ │                                        └→ Signalsmith Stretch → wet gain ┴→ speakers
+ ├─ side panel (extension page): key dial, bypass, manual key  ──tabs.sendMessage──▶ content script
+ └─ service worker: shortcuts (commands), per-tab settings in storage.session (memory only)
+```
+
+Nothing is downloaded or sent anywhere. The web app keeps uploads, key detection and WAV export.
+
 ---
 
 ## 5. Decision log (summary)
@@ -197,6 +209,7 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
 | D21 | Phase 1 contract clarifications: `NOT_FOUND` 404, `retry_after_s` in the error body, dedup joins in-flight jobs, SSE replay from `job_state`, `TMP_DIR` staging, sharps-only key names from the API ([ADR 0005](docs/adr/0005-phase-1-contract-clarifications.md)) | Settles every cross-boundary gap once, before parallel workstreams build against §6 | One new config key and one new error code |
 | D22 | Phase 1 implementation notes: dedup and replay refinements, MiB upload unit, a shared YouTube URL table, harmonic separation off, `NUMBA_CACHE_DIR`, Signalsmith Blob-URL worklet (CSP note), Dependabot for yt-dlp, host ffmpeg for `make dev`, typed engine errors with cause-specific copy (embedded browsers such as VS Code's lack the AAC decoder; use Chrome, Firefox or Safari) ([ADR 0006](docs/adr/0006-phase-1-implementation-notes.md)) | Records what integration found, so nothing changes silently | Engine memory ~2x the decoded track; Firefox realtime specs skip in CI |
 | D23 | Rename KeyShift to **PitchBend Live**: host `pitchbend-live.duckdns.org`, namespace/images/Secret `pitchbend-live*`, Python package `pitchbend_live`, DB `/data/db/pitchbend-live.db` ([ADR 0007](docs/adr/0007-rename-to-pitchbend-live.md)) | Matches the repo name and the new DNS entry; done before any commit or deploy, so nothing migrates | None beyond renamed operator commands |
+| D24 | YouTube transposition moves into a Manifest V3 **Chrome extension** that pitch-shifts the playing `<video>` live in the user's tab (Signalsmith worklet loaded from a packaged web-accessible file, 60 ms blocks); no download, no network, permissions `sidePanel` + `storage` only; code in `apps/web/src/extension/` (workstream D); supersedes ADR 0008 and the desktop-shell spike ([ADR 0009](docs/adr/0009-chrome-extension-live-transpose.md)) | YouTube bot-blocks the server; the extension needs no fetch, so no IP, yt-dlp or relay; Chrome Web Store-compatible | Depends on YouTube's DOM and CSP; key is manual in v1; ads are transposed too; Chrome desktop only |
 
 ---
 
@@ -218,8 +231,10 @@ The same cluster also runs the Sudoku Solver (namespace `sudoku-prod`, host `sud
 │  │  ├─ src/audio/        # AudioEngine, worklet, offline render, WAV encoder
 │  │  ├─ src/features/     # input, player, key-dial, export
 │  │  ├─ src/lib/          # api client, sse client, music theory utils
+│  │  ├─ src/extension/    # Chrome MV3 extension (ADR 0009): shared/, content/, background/, panel/, manifest.json
 │  │  ├─ public/worklets/  # unused: Signalsmith inlines its WASM and worklet (ADR 0006)
-│  │  └─ e2e/              # Playwright: engine/ (real Web Audio) and happy-path.spec.ts; fixtures/
+│  │  ├─ vite.extension.config.ts  # extension build → dist-extension/ (git-ignored; load unpacked from here)
+│  │  └─ e2e/              # Playwright: engine/ (real Web Audio), extension/ (unpacked extension), happy-path.spec.ts; fixtures/
 │  └─ api/                 # FastAPI + ARQ worker (one Python package)
 │     ├─ pitchbend_live/
 │     │  ├─ main.py        # FastAPI app
@@ -437,6 +452,8 @@ Music-theory utilities (`src/lib/music.ts`) must provide: `transposeKey(tonic, m
 
 Each phase must be deployed and working before the next begins.
 
+The Chrome extension (ADR 0009) is outside the numbered phases. The owner chose to build it alongside Phase 1; Phase 1's definition of done is unchanged.
+
 ---
 
 ## 9. Phase 0 — Infrastructure
@@ -629,7 +646,8 @@ Trade-offs, follow-up work, risks.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| YouTube blocks the Oracle datacenter IP | URL input fails | Clear `SOURCE_BLOCKED` UX, upload path, keep yt-dlp updated (weekly Dependabot PR bumps yt-dlp; merging ships a new SHA-tagged image, ADR 0006). Avoid using personal account cookies on the server. Confirmed on the first deploy; a relay through a Raspberry Pi at home is proposed, not adopted, in [ADR 0008](docs/adr/0008-youtube-relay-through-home-raspberry-pi.md). |
+| YouTube blocks the Oracle datacenter IP | URL input fails | Clear `SOURCE_BLOCKED` UX, upload path, keep yt-dlp updated (weekly Dependabot PR bumps yt-dlp; merging ships a new SHA-tagged image, ADR 0006). Avoid using personal account cookies on the server. Confirmed on the first deploy. For YouTube, the Chrome extension (ADR 0009) transposes playback in the user's own tab instead, which supersedes the Raspberry Pi relay in [ADR 0008](docs/adr/0008-youtube-relay-through-home-raspberry-pi.md). |
+| YouTube changes its player DOM or CSP (extension, ADR 0009) | The extension can't find the video or load its worklet | Video lookup falls back to the largest `<video>`; any start failure leaves audio unmodified (dry path first, never attaches to a suspended context) and the side panel explains; the e2e fixture serves YouTube's real CSP so a regression in our loading shows up in CI |
 | YouTube ToS | Takedown / blocking | Personal-practice framing, 24 h retention, random media names, no public library, upload-first messaging |
 | Oracle reclaims idle instance | Downtime | Uptime checks and real usage; the cluster is rebuildable from `infra/k8s/` |
 | ARM64 native dependency missing | Build failure | Check 3.4 before adopting; ADR for any new native dependency |

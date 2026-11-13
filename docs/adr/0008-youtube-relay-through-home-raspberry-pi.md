@@ -1,6 +1,6 @@
 # 0008. Route YouTube fetches through a Raspberry Pi at home
 Date: 2026-09-27
-Status: Proposed. **Nothing here is built.** This is a design for later. Accepting it needs the user's explicit sign-off on each rule it changes (see "If accepted"), because it touches CLAUDE.md §4 (free tiers), §5 (secrets) and §7 (YouTube ToS posture).
+Status: Superseded by [ADR 0009](0009-chrome-extension-live-transpose.md) (2026-11-12). Never built. Kept for reference: it was a design for later and needed the user's sign-off on CLAUDE.md §4 (free tiers), §5 (secrets) and §7 (YouTube ToS posture).
 
 ## Context
 - **YouTube blocks the VM.** On the first production deploy (2026-09-27, `a18ecc3`), every YouTube link failed with `SOURCE_BLOCKED`. Running yt-dlp inside the worker pod showed why: `Sign in to confirm you're not a bot`. It fails the same way for the default player clients and for `player_client=tv,web_embedded,mweb`. YouTube is blocking the Oracle datacenter IP itself, which is the first risk in §14. The app behaved as designed (D10): the error suggests uploading, and upload works fully.
