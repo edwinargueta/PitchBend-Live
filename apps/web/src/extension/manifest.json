@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "PitchBend Live",
+  "short_name": "PitchBend",
+  "version": "0.1.0",
+  "description": "Transpose the YouTube video you're watching, live, without changing its tempo. Nothing is downloaded.",
+  "minimum_chrome_version": "116",
+  "action": { "default_title": "PitchBend Live: open the transpose panel" },
+  "side_panel": { "default_path": "panel/index.html" },
+  "background": { "service_worker": "service-worker.js", "type": "module" },
+  "permissions": ["sidePanel", "storage"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://music.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*", "https://music.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["vendor/signalsmith-stretch.mjs"],
+      "matches": ["https://www.youtube.com/*", "https://music.youtube.com/*"]
+    }
+  ],
+  "commands": {
+    "transpose-up": {
+      "suggested_key": { "default": "Alt+Shift+Up" },
+      "description": "Transpose up one semitone"
+    },
+    "transpose-down": {
+      "suggested_key": { "default": "Alt+Shift+Down" },
+      "description": "Transpose down one semitone"
+    },
+    "transpose-reset": {
+      "suggested_key": { "default": "Alt+Shift+0" },
+      "description": "Back to the original key"
+    },
+    "toggle-bypass": {
+      "suggested_key": { "default": "Alt+Shift+B" },
+      "description": "Bypass on/off (hear the original)"
+    }
+  }
+}

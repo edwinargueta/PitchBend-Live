@@ -1,3 +1,4 @@
 dist
+dist-extension
 coverage
 pnpm-lock.yaml

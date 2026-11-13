@@ -18,7 +18,10 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:engine": "playwright test e2e/engine"
+    "test:e2e:engine": "playwright test e2e/engine",
+    "build:extension": "vite build -c vite.extension.config.ts && EXTENSION_PART=content vite build -c vite.extension.config.ts",
+    "build:extension:probe": "vite build -c vite.extension.config.ts --mode probe && EXTENSION_PART=content vite build -c vite.extension.config.ts --mode probe",
+    "test:e2e:extension": "pnpm run build:extension:probe && PW_EXTENSION_DIR=node_modules/.cache/extension-probe-dist playwright test --project=extension-chromium"
   },
   "dependencies": {
     "react": "^19.3.0",
